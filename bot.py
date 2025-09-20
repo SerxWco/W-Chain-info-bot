@@ -307,7 +307,8 @@ async def og88_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message += "\n📋 **Token Info:**\n"
     message += "OG 88 – The Original Community Meme on W Chain:\n"
     
-    message += f"\n🔗 **Contract:** [0xD1841fC048b488d92fdF73624a2128D10A847E88](https://scan.w-chain.com/token/0xD1841fC048b488d92fdF73624a2128D10A847E88)\n"
+    message += f"\n🌐 **Website:** [OG88.meme](https://og88.meme)\n"
+    message += f"🔗 **Contract:** [0xD1841fC048b488d92fdF73624a2128D10A847E88](https://scan.w-chain.com/token/0xD1841fC048b488d92fdF73624a2128D10A847E88)\n"
     
     message += f"\n📊 *Data from OG88 Price API & W-Chain Explorer*"
     
