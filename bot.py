@@ -28,11 +28,20 @@ def format_number(num: float, decimals: int = 2) -> str:
 def format_price(price: float) -> str:
     """Format price with appropriate decimal places"""
     if price >= 1:
-        return f"${price:.4f}"
+        return f"${price:,.4f}"
     elif price >= 0.01:
-        return f"${price:.6f}"
+        return f"${price:,.6f}"
     else:
-        return f"${price:.8f}"
+        return f"${price:,.8f}"
+
+def format_wco_price(price: float) -> str:
+    """Format WCO price without $ symbol"""
+    if price >= 1:
+        return f"{price:,.4f}"
+    elif price >= 0.01:
+        return f"{price:,.6f}"
+    else:
+        return f"{price:,.8f}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
@@ -45,7 +54,7 @@ Welcome! I provide real-time information about W-Chain and its tokens.
 /start - See this welcome message
 /wco - Complete WCO token information (price, supply, market cap, burn stats)
 /wave - WAVE token price and market information
-/OG88 - OG88 token price and market information
+        /OG88 - 🐼 OG88 token price and market information
 /buy - Buy WCO, WAVE & OG88 tokens on exchanges
 
 **Quick Start:**
@@ -62,7 +71,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /start - See the welcome message
 /wco - Complete WCO token information (price, supply, market cap, burn stats)
 /wave - WAVE token price and market information
-/OG88 - OG88 token price and market information
+        /OG88 - 🐼 OG88 token price and market information
 /buy - Buy WCO, WAVE & OG88 tokens on exchanges
 
 **Data Sources:**
@@ -243,7 +252,7 @@ async def wave_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # WCO Price for reference
     if wco_price:
         wco_price_val = wco_price.get('price', 0)
-        message += f"🪙 **WCO Price:** {format_price(wco_price_val)}\n"
+        message += f"🪙 **WCO Price:** {format_wco_price(wco_price_val)} WCO\n"
     
     # Add holders and transfers count
     if wave_counters:
@@ -272,7 +281,7 @@ async def og88_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Unable to fetch OG88 data. Please try again later.")
         return
     
-    message = "🎯 **OG88 Token Information**\n\n"
+    message = "🐼 **OG88 Token Information**\n\n"
     
     # Price Information
     price_usd = float(og88_data.get('price_usd', 0))
@@ -280,7 +289,7 @@ async def og88_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     market_cap = float(og88_data.get('market_cap', 0))
     
     message += f"💰 **Price USD:** {format_price(price_usd)}\n"
-    message += f"🪙 **Price WCO:** {format_price(price_wco)}\n"
+    message += f"🪙 **Price WCO:** {format_wco_price(price_wco)} WCO\n"
     message += f"📊 **Market Cap:** ${format_number(market_cap, 2)}\n"
     
     # Add holders and transfers count
