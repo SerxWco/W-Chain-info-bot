@@ -1,7 +1,20 @@
 import requests
 import time
-from typing import Dict, Optional, Tuple
-from config import WCO_PRICE_API, WAVE_PRICE_API, WCO_SUPPLY_API, HOLDERS_API, OG88_PRICE_API, OG88_COUNTERS_API, WAVE_COUNTERS_API, CACHE_TTL, PRICE_CACHE_TTL
+from typing import Dict, Optional, Tuple, List
+from config import (
+    WCO_PRICE_API,
+    WAVE_PRICE_API,
+    WCO_SUPPLY_API,
+    HOLDERS_API,
+    OG88_PRICE_API,
+    OG88_COUNTERS_API,
+    WAVE_COUNTERS_API,
+    CACHE_TTL,
+    PRICE_CACHE_TTL,
+    BLOCKSCOUT_API_BASE,
+    OG88_TOKEN_ADDRESS,
+    BURN_WALLET_ADDRESS,
+)
 
 class WChainAPI:
     def __init__(self):
@@ -205,3 +218,31 @@ class WChainAPI:
             'market_cap': self.get_market_cap()
         }
         return info
+
+    def get_address_token_transfers(self, address: str, limit: int = 10) -> Optional[List[Dict]]:
+        """Fetch recent token transfers for a specific address from the explorer API."""
+        normalized_address = address.lower()
+        url = f"{BLOCKSCOUT_API_BASE}/addresses/{normalized_address}/token-transfers"
+        params = {
+            "type": "TOKEN",
+            "items_count": limit
+        }
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            return data.get('items', [])
+        except requests.RequestException as exc:
+            print(f"Error fetching token transfers for {address}: {exc}")
+            return None
+
+    def get_recent_og88_burns(self, limit: int = 5) -> Optional[List[Dict]]:
+        """Return the most recent OG88 transfers sent to the burn wallet."""
+        transfers = self.get_address_token_transfers(BURN_WALLET_ADDRESS, limit=limit)
+        if transfers is None:
+            return None
+        og88_transfers = [
+            tx for tx in transfers
+            if tx.get('token', {}).get('address', '').lower() == OG88_TOKEN_ADDRESS
+        ]
+        return og88_transfers or []
