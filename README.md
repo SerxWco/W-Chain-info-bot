@@ -1,6 +1,6 @@
 # W-Chain Telegram Bot
 
-A comprehensive Telegram bot that provides real-time information about W-Chain and its tokens (WCO and WAVE). The bot fetches data from the official W-Chain Oracle and Supply APIs to display price information, supply distribution, market cap, and more.
+A comprehensive Telegram bot that provides real-time information about W-Chain and its tokens (WCO, WAVE, and OG88). The bot fetches data from the official W-Chain Oracle, Supply, and Explorer APIs to display price information, supply distribution, market cap, and more.
 
 ## Features
 
@@ -19,9 +19,13 @@ A comprehensive Telegram bot that provides real-time information about W-Chain a
 ### 🤖 Bot Commands
 - `/start` - Welcome message and bot introduction
 - `/help` - Show available commands and help information
-- `/price` - Get current WCO and WAVE token prices
-- `/supply` - Display WCO supply information and distribution
-- `/info` - Complete W-Chain information (prices, supply, market cap)
+- `/wco` - Complete WCO dashboard (price, supply, market cap, burn stats)
+- `/wave` - WAVE price, holders, and transfer data
+- `/OG88` - OG88 token price, holders, and market cap
+- `/buy` - Quick links to exchanges listing the supported tokens
+- `/price` - Legacy WCO/WAVE price snapshot (kept for compatibility)
+- `/supply` - Legacy WCO supply snapshot (kept for compatibility)
+- `/burnwatch` - Subscribe/unsubscribe to automatic OG88 burn alerts
 
 ## Installation
 
@@ -96,6 +100,12 @@ The bot integrates with two main W-Chain APIs:
 - Price formatting with appropriate decimal places
 - Percentage calculations for supply distribution
 
+### 🔥 OG88 Burn Monitoring
+- Background job polls the burn wallet `0x000000000000000000000000000000000000dEaD`
+- Filters OG88 (`0xD1841fC048b488d92fdF73624a2128D10A847E88`) ERC-20 transfers only
+- Sends formatted alerts (with optional GIF/video) to chats subscribed via `/burnwatch`
+- Automatically removes chats that block the bot to prevent repeated failures
+
 ## Usage Examples
 
 ### Get Token Prices
@@ -142,7 +152,12 @@ Returns comprehensive data including prices, supply, market cap, and distributio
 ## Configuration
 
 ### Environment Variables
-- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (required)
+- `TELEGRAM_BOT_TOKEN`: Telegram bot token (required)
+- `BLOCKSCOUT_API_BASE`: Explorer API base URL (optional, default: `https://scan.w-chain.com/api/v2`)
+- `OG88_TOKEN_ADDRESS`: OG88 contract address to monitor (optional, default provided)
+- `BURN_WALLET_ADDRESS`: Burn wallet to watch (optional, default: `0x000...dEaD`)
+- `BURN_MONITOR_POLL_SECONDS`: Poll frequency for burn monitoring job (optional, default: `60`)
+- `BURN_ALERT_ANIMATION_URL`: GIF/video URL appended to burn alerts (optional)
 
 ### API Endpoints
 All API endpoints are configured in `config.py` and can be modified if needed.
