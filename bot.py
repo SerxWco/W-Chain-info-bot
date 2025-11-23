@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Set
+from typing import Optional, Set
 from telegram import Update
 from telegram.error import Forbidden
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 # Initialize W-Chain API
 wchain_api = WChainAPI()
+
+# Burn addresses to include wherever aggregate burn totals are required
+BURN_ADDRESSES: Set[str] = {BURN_WALLET_ADDRESS}
+OG88_CONTRACT_DISPLAY = "0xD1841fC048b488d92fdF73624a2128D10A847E88"
 
 def format_number(num: float, decimals: int = 2) -> str:
     """Format large numbers with appropriate suffixes"""
@@ -96,6 +100,12 @@ def format_token_amount(amount: Decimal) -> str:
     """Format token amount removing trailing zeros."""
     formatted = f"{amount:,.4f}"
     return formatted.rstrip('0').rstrip('.') if '.' in formatted else formatted
+
+def format_supply_value(amount: Optional[Decimal]) -> str:
+    """Return a human-friendly supply string or N/A if missing."""
+    if amount is None:
+        return "N/A"
+    return format_token_amount(amount)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
@@ -410,6 +420,36 @@ async def og88_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(message, parse_mode='Markdown')
 
+async def ogsupply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show OG88 supply overview derived from explorer data."""
+    if not update.message:
+        return
+    await update.message.reply_text("🔄 Fetching OG88 supply data...")
+    
+    supply_info = wchain_api.get_og88_supply_overview(burn_addresses=BURN_ADDRESSES)
+    
+    if not supply_info:
+        await update.message.reply_text("❌ Unable to fetch OG88 supply data. Please try again later.")
+        return
+    
+    total_display = format_supply_value(supply_info.get("total_supply"))
+    burned_display = format_supply_value(supply_info.get("burned"))
+    circulating_display = format_supply_value(supply_info.get("circulating_supply"))
+    contract_display = OG88_CONTRACT_DISPLAY
+    if OG88_TOKEN_ADDRESS and OG88_TOKEN_ADDRESS.lower() != OG88_CONTRACT_DISPLAY.lower():
+        contract_display = OG88_TOKEN_ADDRESS
+    
+    message = (
+        "📦 OG88 Supply Overview\n\n"
+        f"📉 Circulating Supply: {circulating_display} OG88\n"
+        f"🔥 Burned Forever: {burned_display} OG88\n"
+        f"📦 Total Supply: {total_display} OG88\n\n"
+        f"⛓️ Contract: {contract_display}\n"
+        "📊 Data from W-Chain Explorer"
+    )
+    
+    await update.message.reply_text(message)
+ 
 
 async def monitor_burn_wallet(context: ContextTypes.DEFAULT_TYPE):
     """Periodic job that checks the burn wallet for new OG88 transfers."""
@@ -504,6 +544,7 @@ def main():
     application.add_handler(CommandHandler("wco", wco_command))
     application.add_handler(CommandHandler("wave", wave_command))
     application.add_handler(CommandHandler("OG88", og88_command))
+    application.add_handler(CommandHandler("ogsupply", ogsupply_command))
     application.add_handler(CommandHandler("buy", buy_command))
     application.add_handler(CommandHandler("burnwatch", burnwatch_command))
     
