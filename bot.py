@@ -496,6 +496,7 @@ def main():
     
     # Create the Application
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    job_queue = application.job_queue
     
     # Add command handlers
     application.add_handler(CommandHandler("start", start))
@@ -515,7 +516,7 @@ def main():
     application.bot_data.setdefault("burn_watch_state", {"last_hash": None})
     
     # Schedule burn monitoring job
-    application.job_queue.run_repeating(
+    job_queue.run_repeating(
         monitor_burn_wallet,
         interval=BURN_MONITOR_POLL_SECONDS,
         first=10
