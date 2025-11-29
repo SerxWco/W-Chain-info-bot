@@ -58,12 +58,12 @@ def main():
     
     print("\n" + "=" * 40)
     if env_exists:
-        print("✅ Setup complete! You can now run: python bot.py")
+        print("✅ Setup complete! You can now run: python -m app.main")
     else:
         print("⚠️  Setup almost complete!")
         print("1. Edit .env file and add your Telegram bot token")
         print("2. Get token from @BotFather on Telegram")
-        print("3. Run: python bot.py")
+        print("3. Run: python -m app.main")
     
     return True
 

@@ -31,7 +31,7 @@
 
 4. **Set Environment Variables:**
    ```bash
-   heroku config:set TELEGRAM_BOT_TOKEN=8268666832:AAGPkHQoyG0IUsgm0C31Wj1jHwaoyzcPQEs
+   heroku config:set TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_TOKEN
    ```
 
 5. **Scale the Bot:**
@@ -51,7 +51,7 @@
 2. Sign up with GitHub
 3. Create new project
 4. Connect your repository
-5. Set environment variable: `TELEGRAM_BOT_TOKEN=8268666832:AAGPkHQoyG0IUsgm0C31Wj1jHwaoyzcPQEs`
+5. Set environment variable: `TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_TOKEN`
 6. Deploy automatically
 
 ### Option 3: Your Own Server (wco-ocean.com)
@@ -75,8 +75,8 @@
    Type=simple
    User=your-username
    WorkingDirectory=/path/to/your/bot
-   Environment=TELEGRAM_BOT_TOKEN=8268666832:AAGPkHQoyG0IUsgm0C31Wj1jHwaoyzcPQEs
-   ExecStart=/usr/bin/python3 bot.py
+   Environment=TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_TOKEN
+   ExecStart=/usr/bin/python3 -m app.main
    Restart=always
 
    [Install]
