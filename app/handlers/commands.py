@@ -1,5 +1,4 @@
 import logging
-from typing import Iterable
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -30,7 +29,6 @@ class CommandHandlers:
             "/start — Quick overview and command list\n"
             "/wco — Comprehensive WCO analytics (price, supply, market cap)\n"
             "/wave — WAVE reward token snapshot\n"
-            "/tokens — Curated list of core W-Chain assets\n"
             "/price [symbols] — Multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)\n"
             "/stats — Network throughput, gas, and wallet activity\n"
         )
@@ -76,30 +74,6 @@ class CommandHandlers:
             "\nWAVE fuels W-Swap incentives, liquidity mining, and community rewards across the W-Chain DEX stack."
         )
         await message.reply_text(text, parse_mode="Markdown")
-
-    async def tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        message = await self._ensure_message(update)
-        if not message:
-            return
-        overview = await self.analytics.list_tokens()
-        lines = ["🪙 *Core W-Chain Tokens*\n"]
-        for token in overview:
-            section = [
-                f"*{token['symbol']} — {token['name']}*",
-                token["description"],
-            ]
-            if token.get("price") is not None:
-                section.append(f"Price: {format_usd(token['price'])}")
-            if token.get("market_cap"):
-                section.append(f"Market Cap: {format_usd(token['market_cap'])}")
-            if token.get("circulating"):
-                section.append(f"Circulating: {humanize_number(token['circulating'])} {token['symbol']}")
-            if token.get("holders"):
-                section.append(f"Holders: {humanize_number(token['holders'])}")
-            if token.get("info_url"):
-                section.append(f"[More Info]({token['info_url']})")
-            lines.append("\n".join(section))
-        await message.reply_text("\n\n".join(lines), parse_mode="Markdown")
 
     async def price(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)

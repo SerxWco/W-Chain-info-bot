@@ -9,7 +9,6 @@ Professional Telegram bot that delivers real-time token insights, price feeds, a
   - `/start` – onboarding and quick guide
   - `/wco` – WCO market & supply analytics
   - `/wave` – WAVE reward token snapshot
-  - `/tokens` – curated catalog of flagship ecosystem assets
   - `/price [symbols]` – multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)
   - `/stats` – network throughput, gas, and wallet activity
 - **Data sources** – W-Chain Oracle APIs, W-Chain Explorer (Blockscout), CoinGecko reference feeds.
@@ -67,7 +66,6 @@ See `app/config.py` to extend the token catalog or add additional CoinGecko mapp
 - `/start` – Welcome tour + shortcuts.
 - `/wco` – Price, market cap, circulating/locked/burned supplies, and allocation breakdown.
 - `/wave` – USD & WCO denominated price plus Blockscout holder/transfer counters.
-- `/tokens` – Human-readable overview of the curated token list (description, price, holders, links).
 - `/price BTC ETH` – On-demand lookup for arbitrary symbols (falls back to defaults when no args).
 - `/stats` – Latest block height, total transactions, active wallets, and average gas.
 

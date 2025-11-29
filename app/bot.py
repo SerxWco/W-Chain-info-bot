@@ -13,7 +13,6 @@ COMMAND_MENU = [
     BotCommand("help", "Quick reminder of available commands"),
     BotCommand("wco", "WCO price and supply analytics"),
     BotCommand("wave", "WAVE token snapshot"),
-    BotCommand("tokens", "Curated list of core W-Chain assets"),
     BotCommand("price", "Multi-token price lookup"),
     BotCommand("stats", "Network throughput and gas metrics"),
 ]
@@ -38,7 +37,6 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("help", command_handlers.start))
     application.add_handler(CommandHandler("wco", command_handlers.wco))
     application.add_handler(CommandHandler("wave", command_handlers.wave))
-    application.add_handler(CommandHandler("tokens", command_handlers.tokens))
     application.add_handler(CommandHandler("price", command_handlers.price))
     application.add_handler(CommandHandler("stats", command_handlers.stats))
 
