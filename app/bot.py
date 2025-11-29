@@ -15,6 +15,7 @@ COMMAND_MENU = [
     BotCommand("wave", "WAVE token snapshot"),
     BotCommand("price", "Multi-token price lookup"),
     BotCommand("stats", "Network throughput and gas metrics"),
+    BotCommand("tokens", "Key W-Chain ecosystem assets"),
 ]
 
 
@@ -39,6 +40,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("wave", command_handlers.wave))
     application.add_handler(CommandHandler("price", command_handlers.price))
     application.add_handler(CommandHandler("stats", command_handlers.stats))
+    application.add_handler(CommandHandler("tokens", command_handlers.tokens))
 
     logger.info("Telegram application wired with command handlers.")
     return application

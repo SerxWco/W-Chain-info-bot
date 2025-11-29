@@ -1,7 +1,9 @@
 import logging
+from pathlib import Path
 
-from telegram import Update
+from telegram import Message, Update
 from telegram.ext import ContextTypes
+from telegram.error import TelegramError
 
 from app.config import Settings
 from app.services import AnalyticsService
@@ -9,6 +11,9 @@ from app.utils import format_percent, format_token_amount, format_usd, humanize_
 
 
 logger = logging.getLogger(__name__)
+BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.jpg"
+BRAND_CAPTION = "🌊 W-Ocean ecosystem update"
+MAX_CAPTION_LENGTH = 1024
 
 
 class CommandHandlers:
@@ -19,9 +24,10 @@ class CommandHandlers:
         self.settings = settings
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message:
+        message = await self._ensure_message(update)
+        if not message:
             return
-        message = (
+        text = (
             "👋 *Welcome to the W-Chain Analytics Bot!*\n\n"
             "I provide real-time token data, on-chain health metrics, and quick references "
             "for the W-Chain ecosystem.\n\n"
@@ -31,8 +37,12 @@ class CommandHandlers:
             "/wave — WAVE reward token snapshot\n"
             "/price [symbols] — Multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)\n"
             "/stats — Network throughput, gas, and wallet activity\n"
+            "/tokens — Featured W-Chain asset catalog"
         )
-        await update.message.reply_text(message, parse_mode="Markdown")
+        catalog = self._token_reference_section()
+        if catalog:
+            text = f"{text}\n\n{catalog}"
+        await self._send_branded_message(message, text)
 
     async def wco(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -40,7 +50,9 @@ class CommandHandlers:
             return
         data = await self.analytics.build_wco_overview()
         if not data:
-            await message.reply_text("Unable to load WCO analytics right now. Please try again shortly.")
+            await self._send_branded_message(
+                message, "Unable to load WCO analytics right now. Please try again shortly.", parse_mode=None
+            )
             return
 
         distribution = data.get("distribution") or {}
@@ -57,7 +69,7 @@ class CommandHandlers:
             f"• Locked: {format_percent(distribution.get('locked'))}\n"
             f"• Burned: {format_percent(distribution.get('burned'))}\n"
         )
-        await message.reply_text(text, parse_mode="Markdown")
+        await self._send_branded_message(message, text)
 
     async def wave(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -73,7 +85,7 @@ class CommandHandlers:
             f"• Transfers: {humanize_number(counters.get('transfers_count'))}\n"
             "\nWAVE fuels W-Swap incentives, liquidity mining, and community rewards across the W-Chain DEX stack."
         )
-        await message.reply_text(text, parse_mode="Markdown")
+        await self._send_branded_message(message, text)
 
     async def price(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -82,14 +94,16 @@ class CommandHandlers:
         requested = context.args if context.args else None
         prices = await self.analytics.price_lookup(requested)
         if not prices:
-            await message.reply_text("No prices available right now, please retry shortly.")
+            await self._send_branded_message(
+                message, "No prices available right now, please retry shortly.", parse_mode=None
+            )
             return
         lines = ["💹 *Token Prices*"]
         for symbol, value in prices.items():
             display = format_usd(value) if value is not None else "N/A"
             lines.append(f"{symbol}: {display}")
         lines.append("\nPowered by W-Chain Oracle & CoinGecko reference feeds.")
-        await message.reply_text("\n".join(lines), parse_mode="Markdown")
+        await self._send_branded_message(message, "\n".join(lines))
 
     async def stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -99,10 +113,14 @@ class CommandHandlers:
             data = await self.analytics.network_stats()
         except Exception:
             logger.exception("Failed to load network stats.")
-            await message.reply_text("Unable to load network stats right now. Please try again shortly.")
+            await self._send_branded_message(
+                message, "Unable to load network stats right now. Please try again shortly.", parse_mode=None
+            )
             return
         if not data:
-            await message.reply_text("Network stats are unavailable at the moment. Please try again soon.")
+            await self._send_branded_message(
+                message, "Network stats are unavailable at the moment. Please try again soon.", parse_mode=None
+            )
             return
         lines = [
             "📡 *Network Stats*",
@@ -111,10 +129,56 @@ class CommandHandlers:
             f"• Active Wallets: {humanize_number(data.get('wallets'))}",
             f"• Average Gas: {humanize_number(data.get('gas'), 4)} Gwei",
         ]
-        await message.reply_text("\n".join(lines), parse_mode="Markdown")
+        await self._send_branded_message(message, "\n".join(lines))
+
+    async def tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        message = await self._ensure_message(update)
+        if not message:
+            return
+        catalog = self._token_reference_section()
+        if not catalog:
+            await self._send_branded_message(
+                message, "No token references configured yet.", parse_mode=None
+            )
+            return
+        await self._send_branded_message(message, catalog)
 
     async def _ensure_message(self, update: Update):
         if not update.message:
             return None
         return update.message
+
+    async def _send_branded_message(self, message: Message, text: str, parse_mode: str | None = "Markdown") -> None:
+        send_text = True
+        if BRAND_IMAGE_PATH.exists():
+            try:
+                if len(text) <= MAX_CAPTION_LENGTH:
+                    with BRAND_IMAGE_PATH.open("rb") as photo:
+                        await message.reply_photo(photo=photo, caption=text, parse_mode=parse_mode)
+                    send_text = False
+                else:
+                    with BRAND_IMAGE_PATH.open("rb") as photo:
+                        await message.reply_photo(photo=photo, caption=BRAND_CAPTION, parse_mode="Markdown")
+            except TelegramError:
+                logger.exception("Unable to send branding image, falling back to text.")
+        if send_text:
+            await message.reply_text(text, parse_mode=parse_mode)
+
+    def _token_reference_section(self) -> str:
+        tokens = [token for token in self.settings.token_catalog if token.symbol.upper() != "WCO"]
+        if not tokens:
+            return ""
+        lines = ["*Featured W-Chain Tokens*"]
+        for token in tokens:
+            lines.append(f"• {token.name} ({token.symbol})")
+            meta_parts = []
+            if token.contract:
+                meta_parts.append(f"`{token.contract}`")
+            if token.info_url:
+                meta_parts.append(f"[Explorer]({token.info_url})")
+            if meta_parts:
+                lines.append("  " + " • ".join(meta_parts))
+            if token.description:
+                lines.append(f"  {token.description}")
+        return "\n".join(lines)
 
