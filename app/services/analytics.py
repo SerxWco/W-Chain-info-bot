@@ -1,6 +1,5 @@
 import asyncio
-from dataclasses import asdict
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, Optional
 
 from app.clients import ReferencePriceClient, WChainClient
 from app.config import Settings
@@ -65,34 +64,6 @@ class AnalyticsService:
             "counters": counters or {},
         }
 
-    async def list_tokens(self) -> List[Dict]:
-        overview = []
-        wco_data = await self.build_wco_overview()
-        wave_data = await self.build_wave_overview()
-        reference_prices = await self.reference.get_prices(token.symbol for token in self.settings.token_catalog)
-
-        for token in self.settings.token_catalog:
-            profile = asdict(token)
-            if token.symbol == "WCO":
-                profile.update(
-                    {
-                        "price": wco_data.get("price"),
-                        "market_cap": wco_data.get("market_cap"),
-                        "circulating": wco_data.get("circulating"),
-                    }
-                )
-            elif token.symbol == "WAVE":
-                profile.update(
-                    {
-                        "price": wave_data.get("price_usd"),
-                        "holders": (wave_data.get("counters") or {}).get("token_holders_count"),
-                    }
-                )
-            else:
-                profile.update({"price": reference_prices.get(token.symbol)})
-            overview.append(profile)
-        return overview
-
     async def price_lookup(self, symbols: Optional[Iterable[str]]) -> Dict[str, Optional[float]]:
         symbols = list(symbols) if symbols else self.settings.default_price_symbols
         symbols = [symbol.upper() for symbol in symbols if symbol]
@@ -119,16 +90,20 @@ class AnalyticsService:
         return result
 
     async def network_stats(self) -> Dict:
-        stats, gas = await asyncio.gather(
-            self.wchain.get_network_stats(),
-            self.wchain.get_gas_oracle(),
-        )
+        stats = await self.wchain.get_network_stats() or {}
+        gas_prices = stats.get("gas_prices") or {}
+
+        last_block = _safe_float(stats, "total_blocks") or _safe_float(stats, "last_block")
+        tx_count = _safe_float(stats, "total_transactions") or _safe_float(stats, "transactions_count")
+        wallets = _safe_float(stats, "total_addresses") or _safe_float(stats, "addresses_count")
+        gas = _safe_float(gas_prices, "average") or _safe_float(gas_prices, "fast") or _safe_float(stats, "static_gas_price")
+
         return {
-            "last_block": (stats or {}).get("last_block") or (stats or {}).get("block_height"),
-            "tx_count": (stats or {}).get("transactions_count") or (stats or {}).get("tx_count"),
-            "wallets": (stats or {}).get("addresses_count") or (stats or {}).get("wallets"),
-            "gas": (gas or {}).get("average") or (gas or {}).get("medium"),
-            "gas_details": gas or {},
+            "last_block": last_block,
+            "tx_count": tx_count,
+            "wallets": wallets,
+            "gas": gas,
+            "gas_details": gas_prices,
         }
 
     async def _get_wave_counters(self) -> Optional[Dict]:
