@@ -11,6 +11,7 @@ Professional Telegram bot that delivers real-time token insights, price feeds, a
   - `/wave` – WAVE reward token snapshot
   - `/price [symbols]` – multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)
   - `/stats` – network throughput, gas, and wallet activity
+  - `/tokens` – featured W-Chain assets and contract references
 - **Data sources** – W-Chain Oracle APIs, W-Chain Explorer (Blockscout), CoinGecko reference feeds.
 - **Resilient UX** – async HTTP, per-endpoint caching, graceful fallbacks, friendly Markdown responses.
 
