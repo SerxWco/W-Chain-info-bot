@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable
 
 from telegram import Update
@@ -6,6 +7,9 @@ from telegram.ext import ContextTypes
 from app.config import Settings
 from app.services import AnalyticsService
 from app.utils import format_percent, format_token_amount, format_usd, humanize_number
+
+
+logger = logging.getLogger(__name__)
 
 
 class CommandHandlers:
@@ -117,7 +121,15 @@ class CommandHandlers:
         message = await self._ensure_message(update)
         if not message:
             return
-        data = await self.analytics.network_stats()
+        try:
+            data = await self.analytics.network_stats()
+        except Exception:
+            logger.exception("Failed to load network stats.")
+            await message.reply_text("Unable to load network stats right now. Please try again shortly.")
+            return
+        if not data:
+            await message.reply_text("Network stats are unavailable at the moment. Please try again soon.")
+            return
         lines = [
             "📡 *Network Stats*",
             f"• Last Block: {int(data.get('last_block')) if data.get('last_block') else 'N/A'}",
