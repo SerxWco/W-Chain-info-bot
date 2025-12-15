@@ -7,6 +7,7 @@ from telegram.error import TelegramError
 
 from app.config import Settings
 from app.services import AnalyticsService
+from app.services.buyback_alerts import BuybackAlertService
 from app.utils import format_percent, format_token_amount, format_usd, humanize_number
 
 
@@ -19,9 +20,10 @@ MAX_CAPTION_LENGTH = 1024
 class CommandHandlers:
     """Telegram command handlers wired into python-telegram-bot."""
 
-    def __init__(self, analytics: AnalyticsService, settings: Settings):
+    def __init__(self, analytics: AnalyticsService, settings: Settings, buyback_alerts: BuybackAlertService):
         self.analytics = analytics
         self.settings = settings
+        self.buyback_alerts = buyback_alerts
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -142,6 +144,38 @@ class CommandHandlers:
             )
             return
         await self._send_branded_message(message, catalog)
+
+    async def buybackalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        message = await self._ensure_message(update)
+        if not message:
+            return
+        chat_id = message.chat_id
+        subscribed = await self.buyback_alerts.toggle_subscription(chat_id)
+        if subscribed:
+            text = (
+                "✅ *Buyback alerts enabled for this chat*\n\n"
+                f"Watching: `{self.settings.buyback_wallet_address}`\n"
+                "You’ll receive an alert whenever this wallet receives WCO."
+            )
+        else:
+            text = "🛑 *Buyback alerts disabled for this chat*"
+        await self._send_branded_message(message, text)
+
+    async def buybackstatus(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        message = await self._ensure_message(update)
+        if not message:
+            return
+        enabled = self.settings.buyback_alerts_enabled
+        subscribed = self.buyback_alerts.is_subscribed(message.chat_id)
+        text = (
+            "💸 *Buyback Alert Status*\n\n"
+            f"• Alerts enabled (bot): {'Yes' if enabled else 'No'}\n"
+            f"• Subscribed (this chat): {'Yes' if subscribed else 'No'}\n"
+            f"• Wallet watched: `{self.settings.buyback_wallet_address}`\n"
+            f"• Poll interval: {self.settings.buyback_poll_seconds}s\n\n"
+            "Use /buybackalerts to toggle alerts in this chat."
+        )
+        await self._send_branded_message(message, text)
 
     async def _ensure_message(self, update: Update):
         if not update.message:
