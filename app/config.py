@@ -43,6 +43,19 @@ class Settings:
         }
     )
     default_price_symbols: List[str] = field(default_factory=lambda: ["WCO", "WAVE", "USDT", "USDC"])
+    # Buyback alert settings (incoming native WCO to a watched wallet)
+    buyback_alerts_enabled: bool = field(
+        default_factory=lambda: os.getenv("BUYBACK_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+    )
+    buyback_wallet_address: str = field(
+        default_factory=lambda: os.getenv(
+            "BUYBACK_WALLET_ADDRESS", "0x81d29c0DcD64fAC05C4A394D455cbD79D210C200"
+        ).strip()
+    )
+    buyback_poll_seconds: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_SECONDS", "30")))
+    buyback_poll_page_size: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_PAGE_SIZE", "25")))
+    buyback_min_amount_wco: float = field(default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_WCO", "0")))
+    buyback_alert_state_path: str = field(default_factory=lambda: os.getenv("BUYBACK_ALERT_STATE_PATH", ".alert_state.json"))
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [
             TokenProfile(

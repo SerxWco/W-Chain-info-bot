@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import httpx
 
@@ -46,6 +46,38 @@ class WChainClient:
         return await self._fetch_json(
             self.settings.gas_oracle_endpoint, cache_key="network:gas", ttl=self.settings.cache_stats_ttl
         )
+
+    async def get_address_transactions(
+        self,
+        address: str,
+        *,
+        direction: str = "to",
+        page_size: int = 25,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch address transactions from Blockscout.
+
+        direction:
+          - "to": incoming transfers / txs where to == address
+          - "from": outgoing transfers / txs where from == address
+          - "all": no direction filter
+        """
+        normalized = address
+        url = f"{self.settings.blockscout_base}/addresses/{normalized}/transactions"
+        params: Dict[str, Any] = {}
+        if direction in {"to", "from"}:
+            params["filter"] = direction
+        if page_size:
+            params["page_size"] = int(page_size)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
 
     async def _fetch_json(self, url: str, cache_key: Optional[str], ttl: Optional[int]) -> Optional[Dict]:
         if cache_key:
