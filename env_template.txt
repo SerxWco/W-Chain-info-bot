@@ -17,3 +17,11 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # BUYBACK_POLL_PAGE_SIZE=25
 # BUYBACK_MIN_AMOUNT_WCO=0
 # BUYBACK_ALERT_STATE_PATH=.alert_state.json
+
+# WCO whale alerts (router -> user native WCO buys)
+# WHALE_ALERTS_ENABLED=true
+# WHALE_ROUTER_ADDRESS=0x617Fe3C8aF56e115e0E9742247Af0d4477240f53
+# WHALE_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
+# WHALE_POLL_SECONDS=15
+# WHALE_POLL_PAGE_SIZE=50
+# WHALE_ALERT_STATE_PATH=.alert_state.json

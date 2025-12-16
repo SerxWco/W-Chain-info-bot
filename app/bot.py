@@ -7,6 +7,7 @@ from app.config import Settings
 from app.handlers.commands import CommandHandlers
 from app.services import AnalyticsService
 from app.services.buyback_alerts import BuybackAlertService
+from app.services.wco_whale_alert import WCOWhaleAlert
 
 logger = logging.getLogger(__name__)
 COMMAND_MENU = [
@@ -26,6 +27,7 @@ COMMAND_MENU = [
 def build_application(settings: Settings) -> Application:
     analytics = AnalyticsService(settings)
     buyback_alerts = BuybackAlertService(settings, analytics.wchain)
+    whale_alerts = WCOWhaleAlert(settings, analytics.wchain)
     command_handlers = CommandHandlers(analytics, settings, buyback_alerts)
 
     async def _post_init(application: Application) -> None:
@@ -33,6 +35,9 @@ def build_application(settings: Settings) -> Application:
 
         application.bot_data["buyback_alerts"] = buyback_alerts
         await buyback_alerts.ensure_initialized()
+
+        application.bot_data["whale_alerts"] = whale_alerts
+        await whale_alerts.ensure_initialized()
 
         if application.job_queue:
             application.job_queue.run_repeating(
@@ -45,6 +50,19 @@ def build_application(settings: Settings) -> Application:
                 "Buyback watcher enabled (wallet=%s interval=%ss).",
                 settings.buyback_wallet_address,
                 settings.buyback_poll_seconds,
+            )
+
+            application.job_queue.run_repeating(
+                whale_alerts.job_callback,
+                interval=settings.whale_poll_seconds,
+                first=5,
+                name="wco_whale_alerts",
+            )
+            logger.info(
+                "WCO whale watcher enabled (router=%s interval=%ss channel=%s).",
+                settings.whale_router_address,
+                settings.whale_poll_seconds,
+                settings.whale_alert_channel_id or "unset",
             )
         else:
             logger.warning("JobQueue not available; buyback alerts will not run.")
