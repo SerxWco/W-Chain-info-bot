@@ -19,6 +19,7 @@ COMMAND_MENU = [
     BotCommand("tokens", "Key W-Chain ecosystem assets"),
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
+    BotCommand("buybacktest", "Send a test buyback alert message"),
 ]
 
 
@@ -64,6 +65,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("tokens", command_handlers.tokens))
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
+    application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
 
     logger.info("Telegram application wired with command handlers.")
     return application
