@@ -9,6 +9,7 @@ from app.config import Settings
 from app.services import AnalyticsService
 from app.services.buyback_alerts import BuybackAlertService
 from app.utils import format_percent, format_token_amount, format_usd, humanize_number
+from decimal import Decimal, InvalidOperation
 
 
 logger = logging.getLogger(__name__)
@@ -175,6 +176,31 @@ class CommandHandlers:
             f"• Poll interval: {self.settings.buyback_poll_seconds}s\n\n"
             "Use /buybackalerts to toggle alerts in this chat."
         )
+        await self._send_branded_message(message, text)
+
+    async def buybacktest(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Sends a test buyback alert message (no on-chain transfer required).
+        Usage:
+          /buybacktest
+          /buybacktest 123.45
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        # Optional amount override for formatting validation.
+        amount = Decimal("1")
+        if context.args:
+            try:
+                amount = Decimal(str(context.args[0]))
+            except (InvalidOperation, TypeError, ValueError):
+                amount = Decimal("1")
+
+        if amount <= 0:
+            amount = Decimal("1")
+
+        text = self.buyback_alerts.render_test_message(amount)
         await self._send_branded_message(message, text)
 
     async def _ensure_message(self, update: Update):

@@ -111,6 +111,13 @@ class BuybackAlertService:
     async def job_callback(self, context) -> None:
         await self.poll_and_broadcast(context.bot)
 
+    def render_test_message(self, amount_wco: Decimal) -> str:
+        """
+        Render a test alert message without requiring an on-chain transfer.
+        Intended for manual verification of Telegram delivery/formatting.
+        """
+        return "🧪 *TEST ALERT* (no on-chain transfer)\n\n" + self._render_message(amount_wco)
+
     def _render_message(self, amount_wco: Decimal) -> str:
         # Reuse existing formatter for consistent thousands separators.
         amount_display = format_token_amount(float(amount_wco))
