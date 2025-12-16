@@ -79,6 +79,33 @@ class WChainClient:
             logger.warning("HTTP error calling %s: %s", url, exc)
             return None
 
+    async def get_address_internal_transactions(
+        self,
+        address: str,
+        *,
+        page_size: int = 25,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch address internal transactions from Blockscout.
+
+        Note: Blockscout exposes internal calls/value movements at:
+          /addresses/{address}/internal-transactions
+        """
+        normalized = address
+        url = f"{self.settings.blockscout_base}/addresses/{normalized}/internal-transactions"
+        params: Dict[str, Any] = {}
+        if page_size:
+            params["page_size"] = int(page_size)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
     async def _fetch_json(self, url: str, cache_key: Optional[str], ttl: Optional[int]) -> Optional[Dict]:
         if cache_key:
             cached = self._cache.get(cache_key)

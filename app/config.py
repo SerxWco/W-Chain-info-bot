@@ -56,6 +56,22 @@ class Settings:
     buyback_poll_page_size: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_PAGE_SIZE", "25")))
     buyback_min_amount_wco: float = field(default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_WCO", "0")))
     buyback_alert_state_path: str = field(default_factory=lambda: os.getenv("BUYBACK_ALERT_STATE_PATH", ".alert_state.json"))
+
+    # WCO Whale alerts (router -> user native WCO buys)
+    whale_alerts_enabled: bool = field(
+        default_factory=lambda: os.getenv("WHALE_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+    )
+    whale_router_address: str = field(
+        default_factory=lambda: os.getenv(
+            "WHALE_ROUTER_ADDRESS",
+            # Provided router (can override via env)
+            "0x617Fe3C8aF56e115e0E9742247Af0d4477240f53",
+        ).strip()
+    )
+    whale_alert_channel_id: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_CHANNEL_ID", "").strip())
+    whale_poll_seconds: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_SECONDS", "15")))
+    whale_poll_page_size: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_PAGE_SIZE", "50")))
+    whale_alert_state_path: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_STATE_PATH", ".alert_state.json"))
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [
             TokenProfile(
