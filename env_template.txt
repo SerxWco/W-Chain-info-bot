@@ -25,3 +25,11 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # WHALE_POLL_SECONDS=15
 # WHALE_POLL_PAGE_SIZE=50
 # WHALE_ALERT_STATE_PATH=.alert_state.json
+
+# Exchange flow alerts (inflow/outflow to exchange wallets)
+# EXCHANGE_FLOW_ALERTS_ENABLED=true
+# EXCHANGE_FLOW_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
+# EXCHANGE_FLOW_POLL_SECONDS=20
+# EXCHANGE_FLOW_POLL_PAGE_SIZE=50
+# EXCHANGE_FLOW_THRESHOLD_WCO=3000000
+# EXCHANGE_FLOW_ALERT_STATE_PATH=.alert_state.json
