@@ -72,6 +72,19 @@ class Settings:
     whale_poll_seconds: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_SECONDS", "15")))
     whale_poll_page_size: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_PAGE_SIZE", "50")))
     whale_alert_state_path: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_STATE_PATH", ".alert_state.json"))
+
+    # Exchange flow alerts (native WCO in/out of exchange wallets)
+    exchange_flow_alerts_enabled: bool = field(
+        default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERTS_ENABLED", "true").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    exchange_flow_alert_channel_id: str = field(default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_CHANNEL_ID", "").strip())
+    exchange_flow_poll_seconds: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_SECONDS", "20")))
+    exchange_flow_poll_page_size: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_PAGE_SIZE", "50")))
+    exchange_flow_threshold_wco: float = field(default_factory=lambda: float(os.getenv("EXCHANGE_FLOW_THRESHOLD_WCO", "3000000")))
+    exchange_flow_alert_state_path: str = field(
+        default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_STATE_PATH", ".alert_state.json")
+    )
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [
             TokenProfile(

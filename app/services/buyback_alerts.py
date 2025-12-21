@@ -234,12 +234,18 @@ class BuybackAlertService:
             self._last_seen_tx_hash = last_seen
 
     def _save_state(self) -> None:
-        data = {
-            "buyback": {
-                "subscribers": sorted(self._subscribers),
-                "last_seen_tx_hash": self._last_seen_tx_hash,
-                "wallet": self.settings.buyback_wallet_address,
-            }
+        data: Dict[str, Any] = {}
+        # Preserve other watcher sections (e.g., whale, exchange flow) if sharing a state file.
+        if self._state_path.exists():
+            try:
+                data = json.loads(self._state_path.read_text(encoding="utf-8"))
+            except Exception:
+                data = {}
+
+        data["buyback"] = {
+            "subscribers": sorted(self._subscribers),
+            "last_seen_tx_hash": self._last_seen_tx_hash,
+            "wallet": self.settings.buyback_wallet_address,
         }
         try:
             self._state_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
