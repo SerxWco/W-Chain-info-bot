@@ -42,10 +42,6 @@ class ExchangeFlowAlertService:
         self._last_seen_by_exchange: Dict[str, str] = {}
         self._load_state()
 
-        footer = (
-            "\n\n📊 Exchange Flow Monitor — WCO Ocean\n"
-            "Threshold: ≥ 3,000,000 WCO"
-        )
         self._exchanges: list[ExchangeProfile] = [
             ExchangeProfile(
                 key="bitrue",
@@ -56,14 +52,14 @@ class ExchangeFlowAlertService:
                     "🐳 {amount} WCO just landed on Bitrue\n\n"
                     "Someone rang the sell bell 🔔\n"
                     "Order books, brace yourselves."
-                    + footer
+                    "\n\n{footer}"
                 ),
                 outflow_template=(
                     "🚀 BITRUE OUTFLOW ALERT\n"
                     "🐳 {amount} WCO just LEFT Bitrue\n\n"
                     "Coins don’t withdraw themselves…\n"
                     "Someone’s planning ahead 🧠"
-                    + footer
+                    "\n\n{footer}"
                 ),
             ),
             ExchangeProfile(
@@ -75,14 +71,14 @@ class ExchangeFlowAlertService:
                     "🐋 {amount} WCO moved into MEXC\n\n"
                     "Either a trader woke up…\n"
                     "or someone chose violence 😈"
-                    + footer
+                    "\n\n{footer}"
                 ),
                 outflow_template=(
                     "📤 MEXC WITHDRAWAL DETECTED\n"
                     "🐋 {amount} WCO pulled from MEXC\n\n"
                     "Less sell pressure, more conviction 💎\n"
                     "Bullish behavior spotted."
-                    + footer
+                    "\n\n{footer}"
                 ),
             ),
             ExchangeProfile(
@@ -94,14 +90,14 @@ class ExchangeFlowAlertService:
                     "🧳 {amount} WCO checked into Bitmart\n\n"
                     "Short stay or market dump?\n"
                     "Charts will decide 💀"
-                    + footer
+                    "\n\n{footer}"
                 ),
                 outflow_template=(
                     "🌊 BITMART OUTFLOW ALERT\n"
                     "🐳 {amount} WCO escaped Bitmart\n\n"
                     "Back to cold storage waters…\n"
                     "The ocean just got deeper 🐋"
-                    + footer
+                    "\n\n{footer}"
                 ),
             ),
         ]
@@ -143,6 +139,7 @@ class ExchangeFlowAlertService:
             return
 
         threshold = Decimal(str(self.settings.exchange_flow_threshold_wco))
+        footer = self._render_footer(threshold)
 
         for ex in self._exchanges:
             async with self._lock:
@@ -158,10 +155,14 @@ class ExchangeFlowAlertService:
                 continue
 
             ex_addr = ex.address.lower()
+            considered = 0
+            alerted = 0
+            below_threshold = 0
             for item in new_items:
                 value = self._parse_wco_amount(item.get("value"))
                 if value is None or value <= 0:
                     continue
+                considered += 1
 
                 from_addr = self._get_hash(item.get("from"))
                 to_addr = self._get_hash(item.get("to"))
@@ -179,12 +180,25 @@ class ExchangeFlowAlertService:
                     continue
 
                 if value < threshold:
+                    below_threshold += 1
                     continue
 
                 amount_display = format_token_amount(value)
                 template = ex.inflow_template if is_inflow else ex.outflow_template
-                text = template.format(amount=amount_display)
+                text = template.format(amount=amount_display, footer=footer)
                 await self._send_to_channel(bot, channel, text)
+                alerted += 1
+
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "Exchange flow poll summary exchange=%s new_items=%s considered=%s alerted=%s below_threshold=%s threshold=%s",
+                    ex.key,
+                    len(new_items),
+                    considered,
+                    alerted,
+                    below_threshold,
+                    str(threshold),
+                )
 
             async with self._lock:
                 self._last_seen_by_exchange[ex.key] = newest_hash
@@ -289,3 +303,19 @@ class ExchangeFlowAlertService:
         except OSError:
             logger.exception("Failed to write exchange flow state to %s", self._state_path)
 
+    @staticmethod
+    def _format_threshold_wco(value: Decimal) -> str:
+        # Prefer clean integer formatting when possible (e.g., 3,000,000).
+        try:
+            if value == value.to_integral_value():
+                return f"{int(value):,}"
+        except Exception:
+            pass
+        return format_token_amount(value)
+
+    def _render_footer(self, threshold: Decimal) -> str:
+        threshold_display = self._format_threshold_wco(threshold)
+        return (
+            "📊 Exchange Flow Monitor — WCO Ocean\n"
+            f"Threshold: ≥ {threshold_display} WCO"
+        )
