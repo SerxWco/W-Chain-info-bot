@@ -7,6 +7,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env_bool(key: str, default: str) -> bool:
+    return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(key: str, default: str) -> int:
+    raw = os.getenv(key, default)
+    cleaned = (raw or "").strip().replace(",", "").replace("_", "")
+    return int(cleaned)
+
+
+def _env_float(key: str, default: str) -> float:
+    raw = os.getenv(key, default)
+    cleaned = (raw or "").strip().replace(",", "").replace("_", "")
+    return float(cleaned)
+
+
 @dataclass(frozen=True)
 class TokenProfile:
     """Metadata describing a catalogued W-Chain ecosystem token."""
@@ -29,10 +45,10 @@ class Settings:
     blockscout_base: str = field(
         default_factory=lambda: os.getenv("BLOCKSCOUT_API_BASE", "https://scan.w-chain.com/api/v2")
     )
-    http_timeout: float = field(default_factory=lambda: float(os.getenv("HTTP_TIMEOUT", "12")))
-    cache_price_ttl: int = field(default_factory=lambda: int(os.getenv("PRICE_CACHE_TTL", "60")))
-    cache_supply_ttl: int = field(default_factory=lambda: int(os.getenv("SUPPLY_CACHE_TTL", "120")))
-    cache_stats_ttl: int = field(default_factory=lambda: int(os.getenv("STATS_CACHE_TTL", "45")))
+    http_timeout: float = field(default_factory=lambda: _env_float("HTTP_TIMEOUT", "12"))
+    cache_price_ttl: int = field(default_factory=lambda: _env_int("PRICE_CACHE_TTL", "60"))
+    cache_supply_ttl: int = field(default_factory=lambda: _env_int("SUPPLY_CACHE_TTL", "120"))
+    cache_stats_ttl: int = field(default_factory=lambda: _env_int("STATS_CACHE_TTL", "45"))
     coin_prices_url: str = "https://api.coingecko.com/api/v3/simple/price"
     coingecko_ids: Dict[str, str] = field(
         default_factory=lambda: {
@@ -45,21 +61,21 @@ class Settings:
     default_price_symbols: List[str] = field(default_factory=lambda: ["WCO", "WAVE", "USDT", "USDC"])
     # Buyback alert settings (incoming native WCO to a watched wallet)
     buyback_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("BUYBACK_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("BUYBACK_ALERTS_ENABLED", "true")
     )
     buyback_wallet_address: str = field(
         default_factory=lambda: os.getenv(
             "BUYBACK_WALLET_ADDRESS", "0x81d29c0DcD64fAC05C4A394D455cbD79D210C200"
         ).strip()
     )
-    buyback_poll_seconds: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_SECONDS", "30")))
-    buyback_poll_page_size: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_PAGE_SIZE", "25")))
-    buyback_min_amount_wco: float = field(default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_WCO", "0")))
+    buyback_poll_seconds: int = field(default_factory=lambda: _env_int("BUYBACK_POLL_SECONDS", "30"))
+    buyback_poll_page_size: int = field(default_factory=lambda: _env_int("BUYBACK_POLL_PAGE_SIZE", "25"))
+    buyback_min_amount_wco: float = field(default_factory=lambda: _env_float("BUYBACK_MIN_AMOUNT_WCO", "0"))
     buyback_alert_state_path: str = field(default_factory=lambda: os.getenv("BUYBACK_ALERT_STATE_PATH", ".alert_state.json"))
 
     # WCO Whale alerts (router -> user native WCO buys)
     whale_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("WHALE_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("WHALE_ALERTS_ENABLED", "true")
     )
     whale_router_address: str = field(
         default_factory=lambda: os.getenv(
@@ -69,19 +85,18 @@ class Settings:
         ).strip()
     )
     whale_alert_channel_id: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_CHANNEL_ID", "").strip())
-    whale_poll_seconds: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_SECONDS", "15")))
-    whale_poll_page_size: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_PAGE_SIZE", "50")))
+    whale_poll_seconds: int = field(default_factory=lambda: _env_int("WHALE_POLL_SECONDS", "15"))
+    whale_poll_page_size: int = field(default_factory=lambda: _env_int("WHALE_POLL_PAGE_SIZE", "50"))
     whale_alert_state_path: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_STATE_PATH", ".alert_state.json"))
 
     # Exchange flow alerts (native WCO in/out of exchange wallets)
     exchange_flow_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERTS_ENABLED", "true").strip().lower()
-        in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("EXCHANGE_FLOW_ALERTS_ENABLED", "true")
     )
     exchange_flow_alert_channel_id: str = field(default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_CHANNEL_ID", "").strip())
-    exchange_flow_poll_seconds: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_SECONDS", "20")))
-    exchange_flow_poll_page_size: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_PAGE_SIZE", "50")))
-    exchange_flow_threshold_wco: float = field(default_factory=lambda: float(os.getenv("EXCHANGE_FLOW_THRESHOLD_WCO", "3000000")))
+    exchange_flow_poll_seconds: int = field(default_factory=lambda: _env_int("EXCHANGE_FLOW_POLL_SECONDS", "20"))
+    exchange_flow_poll_page_size: int = field(default_factory=lambda: _env_int("EXCHANGE_FLOW_POLL_PAGE_SIZE", "50"))
+    exchange_flow_threshold_wco: float = field(default_factory=lambda: _env_float("EXCHANGE_FLOW_THRESHOLD_WCO", "3000000"))
     exchange_flow_alert_state_path: str = field(
         default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_STATE_PATH", ".alert_state.json")
     )
