@@ -40,7 +40,8 @@ class CommandHandlers:
             "/wave — WAVE reward token snapshot\n"
             "/price [symbols] — Multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)\n"
             "/stats — Network throughput, gas, and wallet activity\n"
-            "/tokens — Featured W-Chain asset catalog"
+            "/tokens — Featured W-Chain asset catalog\n"
+            "/token <symbol> — Detailed info for a specific token"
         )
         catalog = self._token_reference_section()
         if catalog:
@@ -146,6 +147,33 @@ class CommandHandlers:
             return
         await self._send_branded_message(message, catalog)
 
+    async def token(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show details for a specific token. Usage: /token <symbol>"""
+        message = await self._ensure_message(update)
+        if not message:
+            return
+        
+        if not context.args:
+            await self._send_branded_message(
+                message,
+                "🔍 *Token Lookup*\n\nUsage: /token <symbol>\n\nExample: `/token WAVE`",
+            )
+            return
+        
+        symbol = context.args[0]
+        details = self._get_token_details(symbol)
+        
+        if not details:
+            available = ", ".join(t.symbol for t in self.settings.token_catalog)
+            await self._send_branded_message(
+                message,
+                f"Token '{symbol}' not found.\n\nAvailable: {available}",
+                parse_mode=None,
+            )
+            return
+        
+        await self._send_branded_message(message, details)
+
     async def buybackalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
         if not message:
@@ -224,21 +252,75 @@ class CommandHandlers:
         if send_text:
             await message.reply_text(text, parse_mode=parse_mode)
 
+    # Token emoji mapping for clean display
+    TOKEN_EMOJIS = {
+        "WAVE": "🟦",
+        "WUSD": "🟩",
+        "USDT": "🟧",
+        "USDC": "🟧",
+        "BUSDT": "🟧",
+        "BUSDC": "🟧",
+        "OG-88": "🟨",
+        "DOGE": "🟪",
+        "SOL": "🔵",
+        "XRP": "🔴",
+        "WWCO": "⚪",
+        "WCO": "🟠",
+    }
+
     def _token_reference_section(self) -> str:
-        tokens = [token for token in self.settings.token_catalog if token.symbol.upper() != "WCO"]
-        if not tokens:
-            return ""
-        lines = ["*Featured W-Chain Tokens*"]
-        for token in tokens:
-            lines.append(f"• {token.name} ({token.symbol})")
-            meta_parts = []
-            if token.contract:
-                meta_parts.append(f"`{token.contract}`")
-            if token.info_url:
-                meta_parts.append(f"[Explorer]({token.info_url})")
-            if meta_parts:
-                lines.append("  " + " • ".join(meta_parts))
-            if token.description:
-                lines.append(f"  {token.description}")
+        lines = ["🌊 *W-Chain Tokens*\n"]
+        
+        # Define display order and groupings
+        display_order = [
+            ("WAVE", None),
+            ("WUSD", None),
+            ("USDT", "USDC"),  # Group USDT/USDC together
+            ("OG-88", None),
+            ("DOGE", None),
+            ("SOL", None),
+            ("XRP", None),
+            ("WWCO", None),
+        ]
+        
+        tokens_by_symbol = {t.symbol.upper(): t for t in self.settings.token_catalog}
+        
+        for symbol, grouped_symbol in display_order:
+            token = tokens_by_symbol.get(symbol.upper())
+            if not token:
+                continue
+            emoji = self.TOKEN_EMOJIS.get(symbol, "•")
+            
+            if grouped_symbol:
+                # Group display (e.g., USDT / USDC)
+                lines.append(f"{emoji} {symbol} / {grouped_symbol}")
+            elif symbol == "WWCO":
+                # Special display for Wrapped WCO
+                lines.append(f"{emoji} Wrapped WCO ({symbol})")
+            else:
+                lines.append(f"{emoji} {token.name if token.name != symbol else symbol}")
+        
+        lines.append("\n🔍 Use /token <symbol> for details")
+        return "\n".join(lines)
+
+    def _get_token_details(self, symbol: str) -> str | None:
+        """Get detailed info for a specific token."""
+        symbol_upper = symbol.upper()
+        token = next((t for t in self.settings.token_catalog if t.symbol.upper() == symbol_upper), None)
+        if not token:
+            return None
+        
+        emoji = self.TOKEN_EMOJIS.get(symbol_upper, "•")
+        lines = [f"{emoji} *{token.name}* ({token.symbol})\n"]
+        
+        if token.description:
+            lines.append(f"{token.description}\n")
+        
+        if token.contract:
+            lines.append(f"📋 Contract: `{token.contract}`")
+        
+        if token.info_url:
+            lines.append(f"🔗 [View on Explorer]({token.info_url})")
+        
         return "\n".join(lines)
 
