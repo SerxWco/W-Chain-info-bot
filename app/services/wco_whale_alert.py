@@ -78,11 +78,14 @@ class WCOWhaleAlert:
 
     async def poll_and_alert(self, bot: Bot) -> None:
         if not self.settings.whale_alerts_enabled:
+            logger.debug("Whale alerts disabled, skipping poll.")
             return
         if not self.settings.whale_router_address:
+            logger.warning("WHALE_ROUTER_ADDRESS not configured, skipping alerts.")
             return
         channel = self.settings.whale_alert_channel_id
         if not channel:
+            logger.warning("WHALE_ALERT_CHANNEL_ID not configured, skipping alerts.")
             return
 
         async with self._lock:
@@ -94,15 +97,22 @@ class WCOWhaleAlert:
         )
         events = self._extract_new_whale_buys(payload, last_seen=last_seen)
         if not events:
+            logger.debug("No new whale buy events detected.")
             return
+        logger.info("Detected %d new whale buy event(s) to process.", len(events))
 
         newest_key = events[-1].unique_key
+        alerts_sent = 0
         for event in events:
             # Tier filter: only alert at/above MINI_MIN
             if event.amount_wco < self.MINI_MIN:
+                logger.debug("Skipping whale event %s: amount %.2f below threshold.", event.tx_hash, event.amount_wco)
                 continue
             text = self._render_message(event)
             await self._send_to_channel(bot, channel, text)
+            alerts_sent += 1
+        if alerts_sent > 0:
+            logger.info("Sent %d whale alert(s) to channel %s.", alerts_sent, channel)
 
         async with self._lock:
             self._last_seen_key = newest_key

@@ -78,6 +78,7 @@ class BuybackAlertService:
 
     async def poll_and_broadcast(self, bot: Bot) -> None:
         if not self.settings.buyback_alerts_enabled:
+            logger.debug("Buyback alerts disabled, skipping poll.")
             return
 
         async with self._lock:
@@ -85,6 +86,7 @@ class BuybackAlertService:
             last_seen = self._last_seen_tx_hash
 
         if not subscribers:
+            logger.debug("No subscribers for buyback alerts, skipping poll.")
             return
 
         payload = await self.wchain.get_address_transactions(
@@ -94,15 +96,22 @@ class BuybackAlertService:
         )
         events = self._extract_new_events(payload, last_seen=last_seen)
         if not events:
+            logger.debug("No new buyback events detected.")
             return
+        logger.info("Detected %d new buyback event(s) to process.", len(events))
 
         # Send oldest -> newest, and only advance last_seen after send attempts.
         newest_hash = events[-1].tx_hash
+        alerts_sent = 0
         for event in events:
             if event.amount_wco < Decimal(str(self.settings.buyback_min_amount_wco)):
+                logger.debug("Skipping buyback event %s: amount %.2f below minimum.", event.tx_hash, event.amount_wco)
                 continue
             text = self._render_message(event.amount_wco)
             await self._broadcast(bot, subscribers, text)
+            alerts_sent += 1
+        if alerts_sent > 0:
+            logger.info("Sent %d buyback alert(s) to %d subscriber(s).", alerts_sent, len(subscribers))
 
         async with self._lock:
             self._last_seen_tx_hash = newest_hash
