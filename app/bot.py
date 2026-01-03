@@ -19,6 +19,7 @@ COMMAND_MENU = [
     BotCommand("price", "Multi-token price lookup"),
     BotCommand("stats", "Network throughput and gas metrics"),
     BotCommand("tokens", "Key W-Chain ecosystem assets"),
+    BotCommand("token", "Token details lookup (e.g. /token SOL)"),
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
     BotCommand("buybacktest", "Send a test buyback alert message"),
@@ -99,6 +100,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("price", command_handlers.price))
     application.add_handler(CommandHandler("stats", command_handlers.stats))
     application.add_handler(CommandHandler("tokens", command_handlers.tokens))
+    application.add_handler(CommandHandler("token", command_handlers.token))
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))

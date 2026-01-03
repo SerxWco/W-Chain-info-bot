@@ -112,6 +112,35 @@ class AnalyticsService:
             return None
         return await self.wchain.get_token_counters(contract)
 
+    async def build_token_overview(self, symbol: str) -> Optional[Dict]:
+        """Build overview for a specific token from the catalog."""
+        symbol_upper = symbol.upper()
+        profile = next(
+            (t for t in self.settings.token_catalog if t.symbol.upper() == symbol_upper),
+            None,
+        )
+        if not profile:
+            return None
+
+        # Fetch price
+        prices = await self.price_lookup([symbol_upper])
+        price = prices.get(symbol_upper)
+
+        # Fetch counters if contract exists
+        counters = None
+        if profile.contract:
+            counters = await self.wchain.get_token_counters(profile.contract)
+
+        return {
+            "symbol": profile.symbol,
+            "name": profile.name,
+            "description": profile.description,
+            "contract": profile.contract,
+            "info_url": profile.info_url,
+            "price_usd": price,
+            "counters": counters,
+        }
+
 
 def _safe_float(payload: Optional[Dict], key: str) -> Optional[float]:
     if not payload:

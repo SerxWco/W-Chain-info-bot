@@ -39,6 +39,7 @@ class CommandHandlers:
             "/wco — Comprehensive WCO analytics (price, supply, market cap)\n"
             "/wave — WAVE reward token snapshot\n"
             "/price [symbols] — Multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)\n"
+            "/token <symbol> — Detailed token info (e.g. /token SOL)\n"
             "/stats — Network throughput, gas, and wallet activity\n"
             "/tokens — Featured W-Chain asset catalog"
         )
@@ -145,6 +146,54 @@ class CommandHandlers:
             )
             return
         await self._send_branded_message(message, catalog)
+
+    async def token(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show detailed info for a specific token. Usage: /token <symbol>"""
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not context.args:
+            # List available tokens when no argument provided
+            available = [t.symbol for t in self.settings.token_catalog]
+            text = (
+                "🔍 *Token Lookup*\n\n"
+                f"Usage: `/token <symbol>`\n\n"
+                f"Available: {', '.join(available)}"
+            )
+            await self._send_branded_message(message, text)
+            return
+
+        symbol = context.args[0].upper()
+        data = await self.analytics.build_token_overview(symbol)
+
+        if not data:
+            available = [t.symbol for t in self.settings.token_catalog]
+            text = (
+                f"❌ Token `{symbol}` not found.\n\n"
+                f"Available tokens: {', '.join(available)}"
+            )
+            await self._send_branded_message(message, text)
+            return
+
+        counters = data.get("counters") or {}
+        lines = [
+            f"🪙 *{data['name']}* ({data['symbol']})\n",
+            f"_{data['description']}_\n",
+            f"• Price: {format_usd(data.get('price_usd'))}",
+        ]
+
+        if counters.get("token_holders_count"):
+            lines.append(f"• Holders: {humanize_number(counters.get('token_holders_count'))}")
+        if counters.get("transfers_count"):
+            lines.append(f"• Transfers: {humanize_number(counters.get('transfers_count'))}")
+
+        if data.get("contract"):
+            lines.append(f"\n📋 Contract: `{data['contract']}`")
+        if data.get("info_url"):
+            lines.append(f"🔗 [More Info]({data['info_url']})")
+
+        await self._send_branded_message(message, "\n".join(lines))
 
     async def buybackalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
