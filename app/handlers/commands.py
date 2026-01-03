@@ -225,20 +225,21 @@ class CommandHandlers:
             await message.reply_text(text, parse_mode=parse_mode)
 
     def _token_reference_section(self) -> str:
-        tokens = [token for token in self.settings.token_catalog if token.symbol.upper() != "WCO"]
-        if not tokens:
-            return ""
-        lines = ["*Featured W-Chain Tokens*"]
-        for token in tokens:
-            lines.append(f"• {token.name} ({token.symbol})")
-            meta_parts = []
-            if token.contract:
-                meta_parts.append(f"`{token.contract}`")
-            if token.info_url:
-                meta_parts.append(f"[Explorer]({token.info_url})")
-            if meta_parts:
-                lines.append("  " + " • ".join(meta_parts))
-            if token.description:
-                lines.append(f"  {token.description}")
+        # Fixed display order with emoji and label
+        token_display = [
+            ("🟦", "WAVE"),
+            ("🟩", "WUSD"),
+            ("🟧", "USDT / USDC"),
+            ("🟨", "OG-88"),
+            ("🟪", "DOGE"),
+            ("🔵", "SOL"),
+            ("🔴", "XRP"),
+            ("⚪", "Wrapped WCO (WWCO)"),
+        ]
+        
+        lines = ["🌊 *W-Chain Tokens*\n"]
+        for emoji, label in token_display:
+            lines.append(f"{emoji} {label}")
+        lines.append("\n🔍 Use /token <symbol> for details")
         return "\n".join(lines)
 
