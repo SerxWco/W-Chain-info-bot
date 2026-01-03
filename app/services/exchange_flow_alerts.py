@@ -137,9 +137,11 @@ class ExchangeFlowAlertService:
 
     async def poll_and_alert(self, bot: Bot) -> None:
         if not self.settings.exchange_flow_alerts_enabled:
+            logger.debug("Exchange flow alerts disabled, skipping poll.")
             return
         channel = self.settings.exchange_flow_alert_channel_id
         if not channel:
+            logger.warning("EXCHANGE_FLOW_ALERT_CHANNEL_ID not configured, skipping alerts.")
             return
 
         threshold = Decimal(str(self.settings.exchange_flow_threshold_wco))
@@ -155,9 +157,12 @@ class ExchangeFlowAlertService:
             )
             new_items, newest_hash = self._extract_new_items(payload, last_seen=last_seen)
             if not new_items or not newest_hash:
+                logger.debug("No new transactions for exchange %s.", ex.display_name)
                 continue
+            logger.info("Found %d new transaction(s) for exchange %s.", len(new_items), ex.display_name)
 
             ex_addr = ex.address.lower()
+            alerts_sent = 0
             for item in new_items:
                 value = self._parse_wco_amount(item.get("value"))
                 if value is None or value <= 0:
@@ -179,12 +184,16 @@ class ExchangeFlowAlertService:
                     continue
 
                 if value < threshold:
+                    logger.debug("Skipping %s flow: %.2f WCO below threshold %.2f.", ex.display_name, value, threshold)
                     continue
 
                 amount_display = format_token_amount(value)
                 template = ex.inflow_template if is_inflow else ex.outflow_template
                 text = template.format(amount=amount_display)
                 await self._send_to_channel(bot, channel, text)
+                alerts_sent += 1
+            if alerts_sent > 0:
+                logger.info("Sent %d exchange flow alert(s) for %s to channel %s.", alerts_sent, ex.display_name, channel)
 
             async with self._lock:
                 self._last_seen_by_exchange[ex.key] = newest_hash
