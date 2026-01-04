@@ -10,7 +10,7 @@ from app.services import AnalyticsService, DailyReportService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
 from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
-from app.utils import format_percent, format_token_amount, format_usd, humanize_number
+from app.utils import format_percent, format_token_amount, format_usd, get_resized_brand_image, humanize_number
 from decimal import Decimal, InvalidOperation
 
 
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.png"
 BRAND_CAPTION = "🌊 W-Ocean ecosystem update"
 MAX_CAPTION_LENGTH = 1024
+# Scale factor for brand image (0.5 = half size)
+BRAND_IMAGE_SCALE = 0.5
 
 
 class CommandHandlers:
@@ -461,13 +463,12 @@ class CommandHandlers:
         send_text = True
         if BRAND_IMAGE_PATH.exists():
             try:
+                photo_buffer = get_resized_brand_image(BRAND_IMAGE_PATH, scale=BRAND_IMAGE_SCALE)
                 if len(text) <= MAX_CAPTION_LENGTH:
-                    with BRAND_IMAGE_PATH.open("rb") as photo:
-                        await message.reply_photo(photo=photo, caption=text, parse_mode=parse_mode)
+                    await message.reply_photo(photo=photo_buffer, caption=text, parse_mode=parse_mode)
                     send_text = False
                 else:
-                    with BRAND_IMAGE_PATH.open("rb") as photo:
-                        await message.reply_photo(photo=photo, caption=BRAND_CAPTION, parse_mode="Markdown")
+                    await message.reply_photo(photo=photo_buffer, caption=BRAND_CAPTION, parse_mode="Markdown")
             except TelegramError:
                 logger.exception("Unable to send branding image, falling back to text.")
         if send_text:
