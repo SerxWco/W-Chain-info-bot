@@ -106,6 +106,90 @@ class WChainClient:
             logger.warning("HTTP error calling %s: %s", url, exc)
             return None
 
+    async def get_transaction(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch transaction details by hash from Blockscout.
+        """
+        url = f"{self.settings.blockscout_base}/transactions/{tx_hash}"
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
+    async def get_transaction_token_transfers(
+        self, tx_hash: str, *, page_size: int = 50
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch token transfers within a transaction from Blockscout.
+        Useful for detecting LP token mints/burns.
+        """
+        url = f"{self.settings.blockscout_base}/transactions/{tx_hash}/token-transfers"
+        params: Dict[str, Any] = {"type": "ERC-20"}
+        if page_size:
+            params["page_size"] = int(page_size)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
+    async def get_address_token_transfers(
+        self,
+        address: str,
+        *,
+        page_size: int = 50,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch token transfers for an address from Blockscout.
+        """
+        url = f"{self.settings.blockscout_base}/addresses/{address}/token-transfers"
+        params: Dict[str, Any] = {"type": "ERC-20"}
+        if page_size:
+            params["page_size"] = int(page_size)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
+    async def get_recent_transactions(
+        self,
+        *,
+        page_size: int = 50,
+        filter_type: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch recent transactions from Blockscout.
+        filter_type can be: "pending", "validated", or None for all.
+        """
+        url = f"{self.settings.blockscout_base}/transactions"
+        params: Dict[str, Any] = {}
+        if page_size:
+            params["page_size"] = int(page_size)
+        if filter_type:
+            params["filter"] = filter_type
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
     async def _fetch_json(self, url: str, cache_key: Optional[str], ttl: Optional[int]) -> Optional[Dict]:
         if cache_key:
             cached = self._cache.get(cache_key)

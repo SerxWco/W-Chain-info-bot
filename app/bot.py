@@ -8,6 +8,7 @@ from app.handlers.commands import CommandHandlers
 from app.services import AnalyticsService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.exchange_flow_alerts import ExchangeFlowAlertService
+from app.services.wco_dex_alerts import WCODexAlertService
 from app.services.wco_whale_alert import WCOWhaleAlert
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ def build_application(settings: Settings) -> Application:
     buyback_alerts = BuybackAlertService(settings, analytics.wchain)
     whale_alerts = WCOWhaleAlert(settings, analytics.wchain)
     exchange_flow_alerts = ExchangeFlowAlertService(settings, analytics.wchain)
+    wco_dex_alerts = WCODexAlertService(settings, analytics.wchain)
     command_handlers = CommandHandlers(analytics, settings, buyback_alerts)
 
     async def _post_init(application: Application) -> None:
@@ -44,6 +46,9 @@ def build_application(settings: Settings) -> Application:
 
         application.bot_data["exchange_flow_alerts"] = exchange_flow_alerts
         await exchange_flow_alerts.ensure_initialized()
+
+        application.bot_data["wco_dex_alerts"] = wco_dex_alerts
+        await wco_dex_alerts.ensure_initialized()
 
         if application.job_queue:
             application.job_queue.run_repeating(
@@ -82,6 +87,18 @@ def build_application(settings: Settings) -> Application:
                 settings.exchange_flow_poll_seconds,
                 settings.exchange_flow_alert_channel_id or "unset",
                 settings.exchange_flow_threshold_wco,
+            )
+
+            application.job_queue.run_repeating(
+                wco_dex_alerts.job_callback,
+                interval=settings.wco_dex_poll_seconds,
+                first=10,
+                name="wco_dex_alerts",
+            )
+            logger.info(
+                "WCO DEX watcher enabled (interval=%ss channel=%s).",
+                settings.wco_dex_poll_seconds,
+                settings.wco_dex_alert_channel_id or "unset",
             )
         else:
             logger.warning("JobQueue not available; buyback alerts will not run.")
