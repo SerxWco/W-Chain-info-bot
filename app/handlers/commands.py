@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation
 
 
 logger = logging.getLogger(__name__)
-BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.jpg"
+BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.png"
 BRAND_CAPTION = "🌊 W-Ocean ecosystem update"
 MAX_CAPTION_LENGTH = 1024
 

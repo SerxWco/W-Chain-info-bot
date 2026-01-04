@@ -16,6 +16,8 @@ from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
+BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.png"
+
 
 @dataclass
 class DailyMetrics:
@@ -111,11 +113,20 @@ class DailyReportService:
         message = self._render_report(current, previous)
 
         try:
-            await bot.send_message(
-                chat_id=channel_id,
-                text=message,
-                parse_mode="Markdown",
-            )
+            if BRAND_IMAGE_PATH.exists():
+                with BRAND_IMAGE_PATH.open("rb") as photo:
+                    await bot.send_photo(
+                        chat_id=channel_id,
+                        photo=photo,
+                        caption=message,
+                        parse_mode="Markdown",
+                    )
+            else:
+                await bot.send_message(
+                    chat_id=channel_id,
+                    text=message,
+                    parse_mode="Markdown",
+                )
             logger.info("Daily report sent to channel %s", channel_id)
         except Exception:
             logger.exception("Failed to send daily report to channel %s", channel_id)
