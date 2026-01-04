@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, asdict
-from datetime import datetime, time, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -13,7 +13,6 @@ from telegram.ext import ContextTypes
 
 from app.clients.wchain import WChainClient
 from app.config import Settings
-from app.utils import format_token_amount, format_usd
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +21,8 @@ logger = logging.getLogger(__name__)
 class DailyMetrics:
     """Snapshot of daily metrics."""
     timestamp: str
-    holders: Optional[int] = None
-    transactions: Optional[int] = None
-    volume_moved: Optional[float] = None
+    total_addresses: Optional[int] = None
+    transactions_today: Optional[int] = None
     circulating_supply: Optional[float] = None
     market_cap: Optional[float] = None
     burned: Optional[float] = None
@@ -37,9 +35,8 @@ class DailyMetrics:
     def from_dict(cls, data: Dict[str, Any]) -> "DailyMetrics":
         return cls(
             timestamp=data.get("timestamp", ""),
-            holders=data.get("holders"),
-            transactions=data.get("transactions"),
-            volume_moved=data.get("volume_moved"),
+            total_addresses=data.get("total_addresses"),
+            transactions_today=data.get("transactions_today"),
             circulating_supply=data.get("circulating_supply"),
             market_cap=data.get("market_cap"),
             burned=data.get("burned"),
@@ -132,11 +129,11 @@ class DailyReportService:
     async def _fetch_current_metrics(self) -> Optional[DailyMetrics]:
         """Fetch all metrics needed for the daily report."""
         try:
-            # Fetch price, supply, and token counters in parallel
-            price_data, supply_data, counters = await asyncio.gather(
+            # Fetch price, supply, and network stats in parallel
+            price_data, supply_data, network_stats = await asyncio.gather(
                 self.wchain.get_wco_price(),
                 self.wchain.get_wco_supply(),
-                self._get_wco_counters(),
+                self.wchain.get_network_stats(),
             )
 
             # Extract price
@@ -150,22 +147,17 @@ class DailyReportService:
             # Calculate market cap
             market_cap = price * circulating if (price and circulating) else None
 
-            # Extract counters (holders, transfers)
-            holders = None
-            transactions = None
-            if counters:
-                holders = self._safe_int(counters, "token_holders_count")
-                transactions = self._safe_int(counters, "transfers_count")
-
-            # Volume moved - we'll track the change in circulating supply as a proxy
-            # In a real implementation, this would come from a 24h volume API
-            volume_moved = self._safe_float(summary, "volume_24h_wco")
+            # Extract network stats (total addresses and 24h transactions)
+            total_addresses = None
+            transactions_today = None
+            if network_stats:
+                total_addresses = self._safe_int(network_stats, "total_addresses")
+                transactions_today = self._safe_int(network_stats, "transactions_today")
 
             return DailyMetrics(
                 timestamp=datetime.utcnow().isoformat(),
-                holders=holders,
-                transactions=transactions,
-                volume_moved=volume_moved,
+                total_addresses=total_addresses,
+                transactions_today=transactions_today,
                 circulating_supply=circulating,
                 market_cap=market_cap,
                 burned=burned,
@@ -174,13 +166,6 @@ class DailyReportService:
         except Exception:
             logger.exception("Error fetching daily metrics")
             return None
-
-    async def _get_wco_counters(self) -> Optional[Dict]:
-        """Fetch WCO token counters from WWCO contract."""
-        wwco_address = self.settings.wwco_token_address
-        if not wwco_address:
-            return None
-        return await self.wchain.get_token_counters(wwco_address)
 
     def _render_report(
         self, current: DailyMetrics, previous: Optional[DailyMetrics]
@@ -196,39 +181,27 @@ class DailyReportService:
             f"W-Ocean Daily Update 📅 {day_name}, {date_str}\n",
         ]
 
-        # Total Holders
-        holders_line = self._format_metric_line(
-            "🌊 Total Holders",
-            current.holders,
-            previous.holders if previous else None,
+        # Total W-Chain Addresses
+        addresses_line = self._format_metric_line(
+            "🌊 Total W-Chain Addresses",
+            current.total_addresses,
+            previous.total_addresses if previous else None,
             is_currency=False,
             decimals=0,
-            inverse_sentiment=False,  # More holders is good
+            inverse_sentiment=False,  # More addresses is good
         )
-        lines.append(holders_line)
+        lines.append(addresses_line)
 
-        # Transactions
+        # Transactions (24h)
         tx_line = self._format_metric_line(
-            "💱 Transactions",
-            current.transactions,
-            previous.transactions if previous else None,
+            "💱 Transactions (24h)",
+            current.transactions_today,
+            previous.transactions_today if previous else None,
             is_currency=False,
             decimals=0,
             inverse_sentiment=False,  # More transactions is good
         )
         lines.append(tx_line)
-
-        # Volume Moved
-        volume_line = self._format_metric_line(
-            "💰 Volume Moved",
-            current.volume_moved,
-            previous.volume_moved if previous else None,
-            is_currency=False,
-            decimals=0,
-            suffix=" WCO",
-            inverse_sentiment=False,  # More volume is good
-        )
-        lines.append(volume_line)
 
         # Circulating Supply
         circ_line = self._format_metric_line(
