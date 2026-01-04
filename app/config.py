@@ -85,6 +85,59 @@ class Settings:
     exchange_flow_alert_state_path: str = field(
         default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_STATE_PATH", ".alert_state.json")
     )
+
+    # WCO DEX alerts (buys/sells/liquidity on W-Swap pools)
+    wco_dex_alerts_enabled: bool = field(
+        default_factory=lambda: os.getenv("WCO_DEX_ALERTS_ENABLED", "true").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    wco_dex_alert_channel_id: str = field(
+        default_factory=lambda: os.getenv("WCO_DEX_ALERT_CHANNEL_ID", "").strip()
+    )
+    wco_dex_poll_seconds: int = field(
+        default_factory=lambda: int(os.getenv("WCO_DEX_POLL_SECONDS", "15"))
+    )
+    wco_dex_poll_page_size: int = field(
+        default_factory=lambda: int(os.getenv("WCO_DEX_POLL_PAGE_SIZE", "50"))
+    )
+    # Minimum WCO amounts for different alert types
+    wco_dex_min_buy_wco: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "1000000"))
+    )
+    wco_dex_min_sell_wco: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_SELL_WCO", "1000000"))
+    )
+    wco_dex_min_liquidity_wco: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_LIQUIDITY_WCO", "500000"))
+    )
+    wco_dex_whale_threshold_wco: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_WCO", "1000000"))
+    )
+    wco_dex_alert_state_path: str = field(
+        default_factory=lambda: os.getenv("WCO_DEX_ALERT_STATE_PATH", ".alert_state.json")
+    )
+    # W-Swap pool addresses (WCO pairs) - comma-separated in env
+    wco_dex_pool_addresses: List[str] = field(
+        default_factory=lambda: [
+            addr.strip()
+            for addr in os.getenv(
+                "WCO_DEX_POOL_ADDRESSES",
+                # Default W-Swap WCO pools (WCO/USDT, WCO/WAVE, etc.)
+                "0xEdB8008031141024d50cA2839A607B2f82C1c045"  # WWCO (Wrapped WCO)
+            ).split(",")
+            if addr.strip()
+        ]
+    )
+    # W-Swap router address for detecting swaps
+    wswap_router_address: str = field(
+        default_factory=lambda: os.getenv(
+            "WSWAP_ROUTER_ADDRESS", "0x617Fe3C8aF56e115e0E9742247Af0d4477240f53"
+        ).strip()
+    )
+    # Auto-delete alert messages after N seconds (0 = disabled)
+    wco_dex_auto_delete_seconds: int = field(
+        default_factory=lambda: int(os.getenv("WCO_DEX_AUTO_DELETE_SECONDS", "300"))  # 5 minutes
+    )
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [
             TokenProfile(

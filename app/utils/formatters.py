@@ -1,7 +1,17 @@
+import re
 from decimal import Decimal
 from typing import Optional, Union
 
 Number = Union[int, float, Decimal]
+
+
+def escape_markdown_v2(text: str) -> str:
+    """
+    Escape special characters for Telegram MarkdownV2 format.
+    Characters that need escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
+    """
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    return re.sub(r'([' + re.escape(escape_chars) + r'])', r'\\\1', text)
 
 
 def humanize_number(value: Optional[Number], decimals: int = 2) -> str:

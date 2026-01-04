@@ -33,3 +33,17 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # EXCHANGE_FLOW_POLL_PAGE_SIZE=50
 # EXCHANGE_FLOW_THRESHOLD_WCO=3000000
 # EXCHANGE_FLOW_ALERT_STATE_PATH=.alert_state.json
+
+# WCO DEX alerts (buys/sells/liquidity on W-Swap pools + whale transfers)
+# WCO_DEX_ALERTS_ENABLED=true
+# WCO_DEX_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
+# WCO_DEX_POLL_SECONDS=15
+# WCO_DEX_POLL_PAGE_SIZE=50
+# WCO_DEX_MIN_BUY_WCO=1000000       # Min WCO for buy alerts (1M)
+# WCO_DEX_MIN_SELL_WCO=1000000      # Min WCO for sell alerts (1M)
+# WCO_DEX_MIN_LIQUIDITY_WCO=500000  # Min WCO for liquidity alerts
+# WCO_DEX_WHALE_THRESHOLD_WCO=1000000  # Min WCO for whale move alerts
+# WCO_DEX_AUTO_DELETE_SECONDS=300  # Auto-delete messages after 5 minutes (0 = disabled)
+# WCO_DEX_ALERT_STATE_PATH=.alert_state.json
+# WCO_DEX_POOL_ADDRESSES=0xEdB8008031141024d50cA2839A607B2f82C1c045
+# WSWAP_ROUTER_ADDRESS=0x617Fe3C8aF56e115e0E9742247Af0d4477240f53
