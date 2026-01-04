@@ -390,28 +390,75 @@ class CommandHandlers:
             await message.reply_text("W-Swap liquidity alerts service not configured.")
             return
 
-        enabled = self.wswap_liquidity_alerts.alerts_enabled
-        channel = self.settings.wswap_liquidity_alert_channel_id or "Not set"
+        # Get debug info
+        debug = self.wswap_liquidity_alerts.get_debug_info()
+        enabled = debug["alerts_enabled"]
+        channel = debug["channel_id"]
+        channel_configured = debug["channel_configured"]
         auto_delete = self.settings.wswap_liquidity_auto_delete_seconds
-        min_usd = self.settings.wswap_liquidity_min_usd
-        factory = self.settings.wswap_factory_address
+        min_usd = debug["min_usd_threshold"]
 
         # Get pair count
         pairs = await self.wswap_liquidity_alerts.discover_pairs()
         pair_count = len(pairs)
 
+        channel_status = f"`{channel}`" if channel_configured else "⚠️ NOT SET"
+
         text = (
             "💧 *W-Swap Liquidity Alert Status*\n\n"
             f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
-            f"• Channel: `{channel}`\n"
+            f"• Channel: {channel_status}\n"
             f"• WCO Pairs: {pair_count}\n"
             f"• Min USD: ${min_usd:,.0f}\n"
             f"• Auto-delete: {auto_delete}s ({auto_delete // 60} min)\n"
-            f"• Factory: `{factory[:20]}...`\n\n"
+            f"• Pairs tracked: {debug['last_seen_pairs_count']}\n"
+            f"• Events processed: {debug['processed_keys_count']}\n\n"
             "Use /liqalerts [on|off] to toggle (admin only).\n"
+            "Use /liqtest to send a test alert.\n"
             "Use /pairs to see all WCO pairs."
         )
         await self._send_branded_message(message, text)
+
+    async def liqtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Send a test liquidity alert message.
+        Usage: /liqtest [add|remove] [wco_amount]
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wswap_liquidity_alerts:
+            await message.reply_text("W-Swap liquidity alerts service not configured.")
+            return
+
+        # Parse args
+        event_type = "add"
+        wco_amount = None
+
+        if context.args:
+            arg0 = context.args[0].lower()
+            if arg0 in ("remove", "burn", "rem"):
+                event_type = "remove"
+            elif arg0 in ("add", "mint"):
+                event_type = "add"
+            else:
+                # Try to parse as amount
+                try:
+                    wco_amount = Decimal(str(context.args[0]))
+                except (InvalidOperation, TypeError, ValueError):
+                    pass
+
+            if len(context.args) > 1 and wco_amount is None:
+                try:
+                    wco_amount = Decimal(str(context.args[1]))
+                except (InvalidOperation, TypeError, ValueError):
+                    pass
+
+        text = self.wswap_liquidity_alerts.render_test_message(
+            event_type=event_type, wco_amount=wco_amount
+        )
+        await message.reply_text(text, parse_mode="Markdown", disable_web_page_preview=True)
 
     async def pairs(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """

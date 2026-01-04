@@ -862,3 +862,65 @@ class WSwapLiquidityAlertService:
             lines.append(f"• [{pair_name}]({pair_link})")
 
         return "\n".join(lines)
+
+    def render_test_message(
+        self,
+        event_type: str = "add",
+        wco_amount: Optional[Decimal] = None,
+        other_amount: Optional[Decimal] = None,
+        other_symbol: str = "XRP",
+    ) -> str:
+        """
+        Render a test liquidity alert message for debugging.
+        """
+        if wco_amount is None:
+            wco_amount = Decimal("100000")
+        if other_amount is None:
+            other_amount = Decimal("20")
+
+        wco_price = Decimal("0.0004")
+        usd_value = wco_amount * wco_price * 2
+
+        if event_type.lower() in ("remove", "burn"):
+            emoji = "🔥"
+            title = "LIQUIDITY REMOVED"
+        else:
+            emoji = "💦"
+            title = "LIQUIDITY ADDED"
+
+        wco_display = format_token_amount(wco_amount)
+        other_display = f"{format_token_amount(other_amount)} {other_symbol}"
+        usd_display = format_usd(usd_value)
+        price_display = f"${float(wco_price):.6f}"
+        provider_short = "0x1B0f2857...98127AE9"
+        tx_hash = "0x0000000000000000000000000000000000000000000000000000000000000000"
+        explorer_link = f"https://scan.w-chain.com/tx/{tx_hash}"
+        pair_link = "https://scan.w-chain.com/address/0x24F07DE79398f24C9d4dD60a281a29843E43B7FD"
+        pair_name = f"{other_symbol}/WWCO"
+
+        return (
+            f"{emoji} *{title}* (TEST)\n\n"
+            f"🏊 *Pool:* [{pair_name}]({pair_link})\n"
+            f"💰 *WCO:* {wco_display}\n"
+            f"🪙 *Other:* {other_display}\n"
+            f"💵 *Value:* ~{usd_display}\n"
+            f"📊 *Price:* {price_display}\n"
+            f"👤 *Provider:* `{provider_short}`\n"
+            f"🔗 [View Tx]({explorer_link})"
+        )
+
+    def get_debug_info(self) -> dict:
+        """Return debug information about the service state."""
+        return {
+            "alerts_enabled": self._alerts_enabled,
+            "channel_configured": bool(self.settings.wswap_liquidity_alert_channel_id),
+            "channel_id": self.settings.wswap_liquidity_alert_channel_id or "NOT SET",
+            "factory_address": self.settings.wswap_factory_address,
+            "wwco_address": self.settings.wwco_token_address,
+            "pairs_cached": len(self._pairs_cache),
+            "last_seen_factory": self._last_seen_factory_log,
+            "last_seen_pairs_count": len(self._last_seen_by_pair),
+            "processed_keys_count": len(self._processed_event_keys),
+            "min_usd_threshold": float(self.settings.wswap_liquidity_min_usd),
+            "poll_seconds": self.settings.wswap_liquidity_poll_seconds,
+        }

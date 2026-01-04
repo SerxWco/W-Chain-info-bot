@@ -29,6 +29,7 @@ COMMAND_MENU = [
     BotCommand("dexstatus", "Show WCO DEX alert status"),
     BotCommand("liqalerts", "Toggle liquidity alerts (admin only)"),
     BotCommand("liqstatus", "Show liquidity alert status"),
+    BotCommand("liqtest", "Send a test liquidity alert"),
     BotCommand("pairs", "List all WCO pairs on W-Swap"),
 ]
 
@@ -150,6 +151,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("dexstatus", command_handlers.dexstatus))
     application.add_handler(CommandHandler("liqalerts", command_handlers.liqalerts))
     application.add_handler(CommandHandler("liqstatus", command_handlers.liqstatus))
+    application.add_handler(CommandHandler("liqtest", command_handlers.liqtest))
     application.add_handler(CommandHandler("pairs", command_handlers.pairs))
 
     logger.info("Telegram application wired with command handlers.")
