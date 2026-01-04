@@ -713,7 +713,7 @@ class WSwapLiquidityAlertService:
             f"🏊 *Pool:* [{pair_name}]({pair_link})\n"
             f"💰 *WCO:* {wco_display}\n"
             f"🪙 *Other:* {other_display}\n"
-            f"💵 *Value:* ~{usd_display}\n"
+            f"💵 *Value:* \\~{usd_display}\n"
             f"📊 *Price:* {price_display}\n"
             f"👤 *Provider:* `{provider_short}`\n"
             f"🔗 [View Tx]({explorer_link})"
