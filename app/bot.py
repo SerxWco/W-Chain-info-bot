@@ -10,6 +10,7 @@ from app.services.buyback_alerts import BuybackAlertService
 from app.services.exchange_flow_alerts import ExchangeFlowAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
 from app.services.wco_whale_alert import WCOWhaleAlert
+from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 
 logger = logging.getLogger(__name__)
 COMMAND_MENU = [
@@ -26,6 +27,9 @@ COMMAND_MENU = [
     BotCommand("buybacktest", "Send a test buyback alert message"),
     BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
     BotCommand("dexstatus", "Show WCO DEX alert status"),
+    BotCommand("liqalerts", "Toggle liquidity alerts (admin only)"),
+    BotCommand("liqstatus", "Show liquidity alert status"),
+    BotCommand("pairs", "List all WCO pairs on W-Swap"),
 ]
 
 
@@ -35,7 +39,10 @@ def build_application(settings: Settings) -> Application:
     whale_alerts = WCOWhaleAlert(settings, analytics.wchain)
     exchange_flow_alerts = ExchangeFlowAlertService(settings, analytics.wchain)
     wco_dex_alerts = WCODexAlertService(settings, analytics.wchain)
-    command_handlers = CommandHandlers(analytics, settings, buyback_alerts, wco_dex_alerts)
+    wswap_liquidity_alerts = WSwapLiquidityAlertService(settings, analytics.wchain)
+    command_handlers = CommandHandlers(
+        analytics, settings, buyback_alerts, wco_dex_alerts, wswap_liquidity_alerts
+    )
 
     async def _post_init(application: Application) -> None:
         await application.bot.set_my_commands(COMMAND_MENU)
@@ -51,6 +58,9 @@ def build_application(settings: Settings) -> Application:
 
         application.bot_data["wco_dex_alerts"] = wco_dex_alerts
         await wco_dex_alerts.ensure_initialized()
+
+        application.bot_data["wswap_liquidity_alerts"] = wswap_liquidity_alerts
+        await wswap_liquidity_alerts.ensure_initialized()
 
         if application.job_queue:
             application.job_queue.run_repeating(
@@ -102,6 +112,19 @@ def build_application(settings: Settings) -> Application:
                 settings.wco_dex_poll_seconds,
                 settings.wco_dex_alert_channel_id or "unset",
             )
+
+            application.job_queue.run_repeating(
+                wswap_liquidity_alerts.job_callback,
+                interval=settings.wswap_liquidity_poll_seconds,
+                first=15,
+                name="wswap_liquidity_alerts",
+            )
+            logger.info(
+                "W-Swap liquidity watcher enabled (factory=%s interval=%ss channel=%s).",
+                settings.wswap_factory_address,
+                settings.wswap_liquidity_poll_seconds,
+                settings.wswap_liquidity_alert_channel_id or "unset",
+            )
         else:
             logger.warning("JobQueue not available; buyback alerts will not run.")
 
@@ -125,6 +148,9 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
     application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))
     application.add_handler(CommandHandler("dexstatus", command_handlers.dexstatus))
+    application.add_handler(CommandHandler("liqalerts", command_handlers.liqalerts))
+    application.add_handler(CommandHandler("liqstatus", command_handlers.liqstatus))
+    application.add_handler(CommandHandler("pairs", command_handlers.pairs))
 
     logger.info("Telegram application wired with command handlers.")
     return application
