@@ -13,10 +13,13 @@ from telegram.ext import ContextTypes
 
 from app.clients.wchain import WChainClient
 from app.config import Settings
+from app.utils import get_resized_brand_image
 
 logger = logging.getLogger(__name__)
 
 BRAND_IMAGE_PATH = Path(__file__).resolve().parents[2] / "wocean.png"
+# Scale factor for brand image (0.5 = half size)
+BRAND_IMAGE_SCALE = 0.5
 
 
 @dataclass
@@ -114,13 +117,13 @@ class DailyReportService:
 
         try:
             if BRAND_IMAGE_PATH.exists():
-                with BRAND_IMAGE_PATH.open("rb") as photo:
-                    await bot.send_photo(
-                        chat_id=channel_id,
-                        photo=photo,
-                        caption=message,
-                        parse_mode="Markdown",
-                    )
+                photo_buffer = get_resized_brand_image(BRAND_IMAGE_PATH, scale=BRAND_IMAGE_SCALE)
+                await bot.send_photo(
+                    chat_id=channel_id,
+                    photo=photo_buffer,
+                    caption=message,
+                    parse_mode="Markdown",
+                )
             else:
                 await bot.send_message(
                     chat_id=channel_id,

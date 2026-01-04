@@ -583,8 +583,16 @@ class WSwapLiquidityAlertService:
             if wco_amount is not None and wco_price is not None:
                 usd_value = wco_amount * wco_price * 2  # LP is ~50/50
 
-            # Filter by minimum USD value
-            if usd_value is not None and usd_value < min_usd:
+            # Filter by minimum USD value - skip if below threshold OR if we can't calculate USD
+            if usd_value is None:
+                logger.debug(
+                    "Skipping %s event on %s: unable to calculate USD value",
+                    event_type.value,
+                    pair.name,
+                )
+                continue
+
+            if usd_value < min_usd:
                 logger.debug(
                     "Skipping %s event on %s: $%.2f below threshold $%.2f",
                     event_type.value,
