@@ -116,18 +116,48 @@ class Settings:
     wco_dex_alert_state_path: str = field(
         default_factory=lambda: os.getenv("WCO_DEX_ALERT_STATE_PATH", ".alert_state.json")
     )
-    # W-Swap pool addresses (WCO pairs) - comma-separated in env
-    wco_dex_pool_addresses: List[str] = field(
-        default_factory=lambda: [
-            addr.strip()
-            for addr in os.getenv(
-                "WCO_DEX_POOL_ADDRESSES",
-                # Default W-Swap WCO pools (WCO/USDT, WCO/WAVE, etc.)
-                "0xEdB8008031141024d50cA2839A607B2f82C1c045"  # WWCO (Wrapped WCO)
-            ).split(",")
-            if addr.strip()
-        ]
+    # W-Swap pool addresses (WCO pairs)
+    # Format: comma-separated, optionally with name: "NAME:ADDRESS" or just "ADDRESS"
+    # Example: WCO_DEX_POOL_ADDRESSES=WCO/USDT:0xAAA...,WCO/WAVE:0xBBB...,0xCCC...
+    wco_dex_pool_addresses_raw: str = field(
+        default_factory=lambda: os.getenv(
+            "WCO_DEX_POOL_ADDRESSES",
+            # Default: WWCO (Wrapped WCO) contract
+            "WWCO:0xEdB8008031141024d50cA2839A607B2f82C1c045"
+        )
     )
+
+    @property
+    def wco_dex_pool_addresses(self) -> List[str]:
+        """Get list of pool addresses (without names)."""
+        result = []
+        for entry in self.wco_dex_pool_addresses_raw.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            # Handle "NAME:ADDRESS" or just "ADDRESS"
+            if ":" in entry:
+                _, addr = entry.split(":", 1)
+                result.append(addr.strip())
+            else:
+                result.append(entry)
+        return result
+
+    @property
+    def wco_dex_pool_configs(self) -> List[tuple]:
+        """Get list of (name, address) tuples for pools."""
+        result = []
+        for entry in self.wco_dex_pool_addresses_raw.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if ":" in entry:
+                name, addr = entry.split(":", 1)
+                result.append((name.strip(), addr.strip()))
+            else:
+                # Auto-generate name from address
+                result.append((f"Pool_{entry[:8]}", entry.strip()))
+        return result
     # W-Swap router address for detecting swaps
     wswap_router_address: str = field(
         default_factory=lambda: os.getenv(

@@ -45,5 +45,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # WCO_DEX_WHALE_THRESHOLD_WCO=1000000  # Min WCO for whale move alerts
 # WCO_DEX_AUTO_DELETE_SECONDS=300  # Auto-delete messages after 5 minutes (0 = disabled)
 # WCO_DEX_ALERT_STATE_PATH=.alert_state.json
-# WCO_DEX_POOL_ADDRESSES=0xEdB8008031141024d50cA2839A607B2f82C1c045
+# W-Swap LP pool addresses - format: NAME:ADDRESS (comma-separated)
+# Add all WCO LP pairs you want to monitor for liquidity events
+# WCO_DEX_POOL_ADDRESSES=WWCO:0xEdB8008031141024d50cA2839A607B2f82C1c045,WCO/USDT:0x...,WCO/WAVE:0x...
 # WSWAP_ROUTER_ADDRESS=0x617Fe3C8aF56e115e0E9742247Af0d4477240f53

@@ -74,8 +74,19 @@ class WCODexAlertService:
     - Whale transfers not involving pools
     """
 
-    # Known W-Swap pools involving WCO
+    # Known W-Swap LP pools involving WCO (native coin)
+    # These are Uniswap V2-style LP pair contracts on W-Swap
+    # 
+    # IMPORTANT: To detect liquidity for ALL WCO pairs, add the LP pair
+    # contract addresses via WCO_DEX_POOL_ADDRESSES env variable (comma-separated)
+    # Example: WCO_DEX_POOL_ADDRESSES=0xAAA...,0xBBB...,0xCCC...
+    #
+    # You can find LP pair addresses on:
+    # - W-Swap interface (pool info page)
+    # - W-Chain Explorer: https://scan.w-chain.com
     DEFAULT_POOLS: List[PoolInfo] = [
+        # WWCO (Wrapped WCO) - wrapping/unwrapping contract
+        # This is used in most WCO swaps since native WCO gets wrapped
         PoolInfo(
             address="0xEdB8008031141024d50cA2839A607B2f82C1c045",
             name="WWCO",
@@ -116,18 +127,19 @@ class WCODexAlertService:
         """Build pool registry from config and defaults."""
         pools: Dict[str, PoolInfo] = {}
 
-        # Add defaults
+        # Add defaults first
         for pool in self.DEFAULT_POOLS:
             pools[pool.address.lower()] = pool
 
-        # Add from config (may override defaults)
-        for addr in self.settings.wco_dex_pool_addresses:
+        # Add/override from config (supports NAME:ADDRESS format)
+        for name, addr in self.settings.wco_dex_pool_configs:
             addr_lower = addr.lower()
-            if addr_lower not in pools:
-                pools[addr_lower] = PoolInfo(
-                    address=addr,
-                    name=f"Pool_{addr[:8]}",
-                )
+            pools[addr_lower] = PoolInfo(
+                address=addr,
+                name=name,
+                # LP token address is the same as pool address for Uniswap V2 style
+                lp_token_address=addr,
+            )
 
         return list(pools.values())
 
