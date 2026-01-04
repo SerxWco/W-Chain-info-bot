@@ -175,6 +175,23 @@ class Settings:
     wswap_liquidity_auto_delete_seconds: int = field(
         default_factory=lambda: int(os.getenv("WSWAP_LIQUIDITY_AUTO_DELETE_SECONDS", "600"))  # 10 min
     )
+    # Daily report settings
+    daily_report_enabled: bool = field(
+        default_factory=lambda: os.getenv("DAILY_REPORT_ENABLED", "true").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    daily_report_channel_id: str = field(
+        default_factory=lambda: os.getenv("DAILY_REPORT_CHANNEL_ID", "").strip()
+    )
+    daily_report_hour: int = field(
+        default_factory=lambda: int(os.getenv("DAILY_REPORT_HOUR", "22"))
+    )
+    daily_report_minute: int = field(
+        default_factory=lambda: int(os.getenv("DAILY_REPORT_MINUTE", "0"))
+    )
+    daily_report_state_path: str = field(
+        default_factory=lambda: os.getenv("DAILY_REPORT_STATE_PATH", ".alert_state.json")
+    )
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [
             TokenProfile(
