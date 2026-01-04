@@ -134,9 +134,46 @@ class Settings:
             "WSWAP_ROUTER_ADDRESS", "0x617Fe3C8aF56e115e0E9742247Af0d4477240f53"
         ).strip()
     )
+    # W-Swap factory address for discovering all pairs
+    wswap_factory_address: str = field(
+        default_factory=lambda: os.getenv(
+            "WSWAP_FACTORY_ADDRESS", "0x2A44f013aD7D6a1083d8F499605Cf1148fbaCE31"
+        ).strip()
+    )
+    # Wrapped WCO (WWCO) token address - used to identify WCO pairs
+    wwco_token_address: str = field(
+        default_factory=lambda: os.getenv(
+            "WWCO_TOKEN_ADDRESS", "0xEdB8008031141024d50cA2839A607B2f82C1c045"
+        ).strip()
+    )
     # Auto-delete alert messages after N seconds (0 = disabled)
     wco_dex_auto_delete_seconds: int = field(
         default_factory=lambda: int(os.getenv("WCO_DEX_AUTO_DELETE_SECONDS", "300"))  # 5 minutes
+    )
+    # W-Swap liquidity alert settings
+    wswap_liquidity_alerts_enabled: bool = field(
+        default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERTS_ENABLED", "true").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    wswap_liquidity_alert_channel_id: str = field(
+        default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERT_CHANNEL_ID", "").strip()
+    )
+    wswap_liquidity_poll_seconds: int = field(
+        default_factory=lambda: int(os.getenv("WSWAP_LIQUIDITY_POLL_SECONDS", "20"))
+    )
+    wswap_liquidity_poll_page_size: int = field(
+        default_factory=lambda: int(os.getenv("WSWAP_LIQUIDITY_POLL_PAGE_SIZE", "50"))
+    )
+    # Minimum USD value for liquidity alerts (filter small events)
+    wswap_liquidity_min_usd: float = field(
+        default_factory=lambda: float(os.getenv("WSWAP_LIQUIDITY_MIN_USD", "100"))
+    )
+    wswap_liquidity_alert_state_path: str = field(
+        default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERT_STATE_PATH", ".alert_state.json")
+    )
+    # Auto-delete liquidity alerts after N seconds (0 = disabled)
+    wswap_liquidity_auto_delete_seconds: int = field(
+        default_factory=lambda: int(os.getenv("WSWAP_LIQUIDITY_AUTO_DELETE_SECONDS", "600"))  # 10 min
     )
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [

@@ -9,6 +9,7 @@ from app.config import Settings
 from app.services import AnalyticsService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
+from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 from app.utils import format_percent, format_token_amount, format_usd, humanize_number
 from decimal import Decimal, InvalidOperation
 
@@ -28,11 +29,13 @@ class CommandHandlers:
         settings: Settings,
         buyback_alerts: BuybackAlertService,
         wco_dex_alerts: WCODexAlertService | None = None,
+        wswap_liquidity_alerts: WSwapLiquidityAlertService | None = None,
     ):
         self.analytics = analytics
         self.settings = settings
         self.buyback_alerts = buyback_alerts
         self.wco_dex_alerts = wco_dex_alerts
+        self.wswap_liquidity_alerts = wswap_liquidity_alerts
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -342,6 +345,88 @@ class CommandHandlers:
             "Use /dexalerts [on|off] to toggle (admin only)."
         )
         await self._send_branded_message(message, text)
+
+    async def liqalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Toggle W-Swap liquidity alerts on/off. Admin only.
+        Usage: /liqalerts [on|off]
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wswap_liquidity_alerts:
+            await message.reply_text("W-Swap liquidity alerts service not configured.")
+            return
+
+        user = update.effective_user
+        if not user:
+            await message.reply_text("Unable to identify user.")
+            return
+
+        # Determine if enabling or disabling
+        enable: bool | None = None
+        if context.args:
+            arg = context.args[0].lower()
+            if arg in ("on", "enable", "1", "true", "yes"):
+                enable = True
+            elif arg in ("off", "disable", "0", "false", "no"):
+                enable = False
+
+        success, result_msg = await self.wswap_liquidity_alerts.toggle_alerts(
+            context.bot, user.id, enable=enable
+        )
+        await message.reply_text(result_msg)
+
+    async def liqstatus(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Show W-Swap liquidity alert status.
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wswap_liquidity_alerts:
+            await message.reply_text("W-Swap liquidity alerts service not configured.")
+            return
+
+        enabled = self.wswap_liquidity_alerts.alerts_enabled
+        channel = self.settings.wswap_liquidity_alert_channel_id or "Not set"
+        auto_delete = self.settings.wswap_liquidity_auto_delete_seconds
+        min_usd = self.settings.wswap_liquidity_min_usd
+        factory = self.settings.wswap_factory_address
+
+        # Get pair count
+        pairs = await self.wswap_liquidity_alerts.discover_pairs()
+        pair_count = len(pairs)
+
+        text = (
+            "💧 *W-Swap Liquidity Alert Status*\n\n"
+            f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
+            f"• Channel: `{channel}`\n"
+            f"• WCO Pairs: {pair_count}\n"
+            f"• Min USD: ${min_usd:,.0f}\n"
+            f"• Auto-delete: {auto_delete}s ({auto_delete // 60} min)\n"
+            f"• Factory: `{factory[:20]}...`\n\n"
+            "Use /liqalerts [on|off] to toggle (admin only).\n"
+            "Use /pairs to see all WCO pairs."
+        )
+        await self._send_branded_message(message, text)
+
+    async def pairs(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        List all WCO pairs discovered from W-Swap factory.
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wswap_liquidity_alerts:
+            await message.reply_text("W-Swap liquidity service not configured.")
+            return
+
+        summary = await self.wswap_liquidity_alerts.get_all_pairs_summary()
+        await message.reply_text(summary, parse_mode="MarkdownV2", disable_web_page_preview=True)
 
     async def _ensure_message(self, update: Update):
         if not update.message:

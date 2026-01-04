@@ -164,6 +164,52 @@ class WChainClient:
             logger.warning("HTTP error calling %s: %s", url, exc)
             return None
 
+    async def get_address_logs(
+        self,
+        address: str,
+        *,
+        page_size: int = 50,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch event logs for a contract address from Blockscout.
+        Returns decoded events like Swap, Mint, Burn, PairCreated, etc.
+        """
+        url = f"{self.settings.blockscout_base}/addresses/{address}/logs"
+        params: Dict[str, Any] = {}
+        if page_size:
+            params["page_size"] = int(page_size)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
+    async def get_token_info(self, token_address: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch token metadata (name, symbol, decimals) from Blockscout.
+        """
+        cache_key = f"token:info:{token_address.lower()}"
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        url = f"{self.settings.blockscout_base}/tokens/{token_address}"
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                data = response.json()
+                # Cache for 1 hour (token info rarely changes)
+                self._cache.set(cache_key, data, 3600)
+                return data
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None
+
     async def get_recent_transactions(
         self,
         *,
