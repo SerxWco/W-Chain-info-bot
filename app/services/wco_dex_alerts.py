@@ -18,7 +18,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from telegram import Bot
+from telegram import Bot, ChatMember
+from telegram.error import TelegramError
 
 from app.clients.wchain import WChainClient
 from app.config import Settings
@@ -93,6 +94,7 @@ class WCODexAlertService:
         self._last_seen_router: Optional[str] = None
         self._last_seen_whale_tx: Optional[str] = None
         self._max_processed_cache = 1000
+        self._alerts_enabled: bool = True  # Can be toggled by admins
 
         # Also track exchange addresses to exclude from whale alerts
         self._exchange_addresses_lower: Set[str] = {
@@ -100,6 +102,9 @@ class WCODexAlertService:
             "0x2802e182d5a15df915fd0363d8f1adfd2049f9ee",  # MEXC
             "0x430d2ada8140378989d20eae6d48ea05bbce2977",  # Bitmart
         }
+
+        # Store job queue reference for auto-delete scheduling
+        self._job_queue = None
 
         # Build pool registry from config + defaults
         self._pools = self._build_pool_registry()
@@ -199,13 +204,78 @@ class WCODexAlertService:
 
     async def job_callback(self, context) -> None:
         """Telegram job callback for periodic polling."""
+        # Store job queue reference for auto-delete scheduling
+        if context.job_queue and not self._job_queue:
+            self._job_queue = context.job_queue
         await self.poll_and_alert(context.bot)
+
+    @property
+    def alerts_enabled(self) -> bool:
+        """Check if alerts are currently enabled."""
+        return self._alerts_enabled
+
+    async def is_admin(self, bot: Bot, chat_id: str | int, user_id: int) -> bool:
+        """Check if a user is an admin in the specified chat/channel."""
+        try:
+            member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+            return member.status in (
+                ChatMember.ADMINISTRATOR,
+                ChatMember.OWNER,
+            )
+        except TelegramError as e:
+            logger.warning("Failed to check admin status: %s", e)
+            return False
+
+    async def toggle_alerts(self, bot: Bot, user_id: int, enable: Optional[bool] = None) -> tuple[bool, str]:
+        """
+        Toggle alerts on/off. Only admins can do this.
+        
+        Args:
+            bot: Telegram bot instance
+            user_id: User attempting to toggle
+            enable: If None, toggle current state. If bool, set to that value.
+            
+        Returns:
+            Tuple of (success, message)
+        """
+        channel = self.settings.wco_dex_alert_channel_id
+        if not channel:
+            return False, "Alert channel not configured."
+
+        # Check if user is admin
+        is_admin = await self.is_admin(bot, channel, user_id)
+        if not is_admin:
+            return False, "⛔ Only channel admins can enable/disable alerts."
+
+        async with self._lock:
+            if enable is None:
+                self._alerts_enabled = not self._alerts_enabled
+            else:
+                self._alerts_enabled = enable
+            
+            status = "enabled ✅" if self._alerts_enabled else "disabled ❌"
+            self._save_state()
+            
+        return True, f"WCO DEX alerts {status}"
+
+    async def enable_alerts(self, bot: Bot, user_id: int) -> tuple[bool, str]:
+        """Enable alerts (admin only)."""
+        return await self.toggle_alerts(bot, user_id, enable=True)
+
+    async def disable_alerts(self, bot: Bot, user_id: int) -> tuple[bool, str]:
+        """Disable alerts (admin only)."""
+        return await self.toggle_alerts(bot, user_id, enable=False)
 
     async def poll_and_alert(self, bot: Bot) -> None:
         """Main polling loop - check for new events and send alerts."""
         if not self.settings.wco_dex_alerts_enabled:
-            logger.debug("WCO DEX alerts disabled, skipping poll.")
+            logger.debug("WCO DEX alerts disabled in config, skipping poll.")
             return
+
+        async with self._lock:
+            if not self._alerts_enabled:
+                logger.debug("WCO DEX alerts disabled by admin, skipping poll.")
+                return
 
         channel = self.settings.wco_dex_alert_channel_id
         if not channel:
@@ -723,16 +793,47 @@ class WCODexAlertService:
         return f"Unknown alert type: {event.alert_type}"
 
     async def _send_to_channel(self, bot: Bot, channel: str, text: str) -> None:
-        """Send alert message to Telegram channel."""
+        """Send alert message to Telegram channel with auto-delete."""
         try:
-            await bot.send_message(
+            message = await bot.send_message(
                 chat_id=channel,
                 text=text,
                 parse_mode="MarkdownV2",
                 disable_web_page_preview=True,
             )
+            
+            # Schedule auto-delete if configured
+            auto_delete_seconds = self.settings.wco_dex_auto_delete_seconds
+            if auto_delete_seconds > 0 and self._job_queue:
+                self._job_queue.run_once(
+                    self._delete_message_callback,
+                    when=auto_delete_seconds,
+                    data={"chat_id": channel, "message_id": message.message_id},
+                    name=f"delete_msg_{message.message_id}",
+                )
+                logger.debug(
+                    "Scheduled auto-delete for message %s in %d seconds.",
+                    message.message_id,
+                    auto_delete_seconds,
+                )
         except Exception:
             logger.exception("Failed to send WCO DEX alert to channel=%s", channel)
+
+    async def _delete_message_callback(self, context) -> None:
+        """Callback to delete a message after the auto-delete delay."""
+        data = context.job.data
+        chat_id = data.get("chat_id")
+        message_id = data.get("message_id")
+        
+        if not chat_id or not message_id:
+            return
+            
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+            logger.debug("Auto-deleted message %s from channel %s.", message_id, chat_id)
+        except TelegramError as e:
+            # Message might already be deleted or bot lacks permission
+            logger.debug("Could not delete message %s: %s", message_id, e)
 
     def _mark_processed(self, tx_hash: str) -> None:
         """Mark a transaction as processed (must be called within lock)."""
@@ -804,6 +905,11 @@ class WCODexAlertService:
         if isinstance(last_seen_whale, str) and last_seen_whale:
             self._last_seen_whale_tx = last_seen_whale
 
+        # Load alerts enabled state
+        alerts_enabled = section.get("alerts_enabled")
+        if isinstance(alerts_enabled, bool):
+            self._alerts_enabled = alerts_enabled
+
         # Load processed tx hashes
         processed = section.get("processed_tx_hashes") or []
         if isinstance(processed, list):
@@ -824,6 +930,7 @@ class WCODexAlertService:
             "last_seen_by_pool": dict(self._last_seen_by_pool),
             "last_seen_router": self._last_seen_router,
             "last_seen_whale_tx": self._last_seen_whale_tx,
+            "alerts_enabled": self._alerts_enabled,
             "processed_tx_hashes": list(self._processed_tx_hashes)[-self._max_processed_cache :],
             "channel": self.settings.wco_dex_alert_channel_id,
             "pools": [p.address for p in self._pools],

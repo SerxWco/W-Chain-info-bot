@@ -102,10 +102,10 @@ class Settings:
     )
     # Minimum WCO amounts for different alert types
     wco_dex_min_buy_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "100000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "1000000"))
     )
     wco_dex_min_sell_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_SELL_WCO", "100000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_SELL_WCO", "1000000"))
     )
     wco_dex_min_liquidity_wco: float = field(
         default_factory=lambda: float(os.getenv("WCO_DEX_MIN_LIQUIDITY_WCO", "500000"))
@@ -133,6 +133,10 @@ class Settings:
         default_factory=lambda: os.getenv(
             "WSWAP_ROUTER_ADDRESS", "0x617Fe3C8aF56e115e0E9742247Af0d4477240f53"
         ).strip()
+    )
+    # Auto-delete alert messages after N seconds (0 = disabled)
+    wco_dex_auto_delete_seconds: int = field(
+        default_factory=lambda: int(os.getenv("WCO_DEX_AUTO_DELETE_SECONDS", "300"))  # 5 minutes
     )
     token_catalog: List[TokenProfile] = field(
         default_factory=lambda: [

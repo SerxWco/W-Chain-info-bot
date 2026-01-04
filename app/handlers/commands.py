@@ -8,6 +8,7 @@ from telegram.error import TelegramError
 from app.config import Settings
 from app.services import AnalyticsService
 from app.services.buyback_alerts import BuybackAlertService
+from app.services.wco_dex_alerts import WCODexAlertService
 from app.utils import format_percent, format_token_amount, format_usd, humanize_number
 from decimal import Decimal, InvalidOperation
 
@@ -21,10 +22,17 @@ MAX_CAPTION_LENGTH = 1024
 class CommandHandlers:
     """Telegram command handlers wired into python-telegram-bot."""
 
-    def __init__(self, analytics: AnalyticsService, settings: Settings, buyback_alerts: BuybackAlertService):
+    def __init__(
+        self,
+        analytics: AnalyticsService,
+        settings: Settings,
+        buyback_alerts: BuybackAlertService,
+        wco_dex_alerts: WCODexAlertService | None = None,
+    ):
         self.analytics = analytics
         self.settings = settings
         self.buyback_alerts = buyback_alerts
+        self.wco_dex_alerts = wco_dex_alerts
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -272,6 +280,67 @@ class CommandHandlers:
             amount = Decimal("1")
 
         text = self.buyback_alerts.render_test_message(amount)
+        await self._send_branded_message(message, text)
+
+    async def dexalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Toggle WCO DEX alerts on/off. Admin only.
+        Usage: /dexalerts [on|off]
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wco_dex_alerts:
+            await message.reply_text("WCO DEX alerts service not configured.")
+            return
+
+        user = update.effective_user
+        if not user:
+            await message.reply_text("Unable to identify user.")
+            return
+
+        # Determine if enabling or disabling
+        enable: bool | None = None
+        if context.args:
+            arg = context.args[0].lower()
+            if arg in ("on", "enable", "1", "true", "yes"):
+                enable = True
+            elif arg in ("off", "disable", "0", "false", "no"):
+                enable = False
+
+        success, result_msg = await self.wco_dex_alerts.toggle_alerts(
+            context.bot, user.id, enable=enable
+        )
+        await message.reply_text(result_msg)
+
+    async def dexstatus(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Show WCO DEX alert status.
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.wco_dex_alerts:
+            await message.reply_text("WCO DEX alerts service not configured.")
+            return
+
+        enabled = self.wco_dex_alerts.alerts_enabled
+        channel = self.settings.wco_dex_alert_channel_id or "Not set"
+        auto_delete = self.settings.wco_dex_auto_delete_seconds
+
+        text = (
+            "📊 *WCO DEX Alert Status*\n\n"
+            f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
+            f"• Channel: `{channel}`\n"
+            f"• Auto-delete: {auto_delete}s ({auto_delete // 60} min)\n"
+            f"• Buy threshold: {format_token_amount(self.settings.wco_dex_min_buy_wco)} WCO\n"
+            f"• Sell threshold: {format_token_amount(self.settings.wco_dex_min_sell_wco)} WCO\n"
+            f"• Liquidity threshold: {format_token_amount(self.settings.wco_dex_min_liquidity_wco)} WCO\n"
+            f"• Whale threshold: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO\n\n"
+            "Use /dexalerts [on|off] to toggle (admin only)."
+        )
         await self._send_branded_message(message, text)
 
     async def _ensure_message(self, update: Update):

@@ -24,6 +24,8 @@ COMMAND_MENU = [
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
     BotCommand("buybacktest", "Send a test buyback alert message"),
+    BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
+    BotCommand("dexstatus", "Show WCO DEX alert status"),
 ]
 
 
@@ -33,7 +35,7 @@ def build_application(settings: Settings) -> Application:
     whale_alerts = WCOWhaleAlert(settings, analytics.wchain)
     exchange_flow_alerts = ExchangeFlowAlertService(settings, analytics.wchain)
     wco_dex_alerts = WCODexAlertService(settings, analytics.wchain)
-    command_handlers = CommandHandlers(analytics, settings, buyback_alerts)
+    command_handlers = CommandHandlers(analytics, settings, buyback_alerts, wco_dex_alerts)
 
     async def _post_init(application: Application) -> None:
         await application.bot.set_my_commands(COMMAND_MENU)
@@ -121,6 +123,8 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
+    application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))
+    application.add_handler(CommandHandler("dexstatus", command_handlers.dexstatus))
 
     logger.info("Telegram application wired with command handlers.")
     return application
