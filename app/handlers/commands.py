@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from telegram.error import TelegramError
 
 from app.config import Settings
-from app.services import AnalyticsService
+from app.services import AnalyticsService, DailyReportService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
 from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
@@ -30,12 +30,14 @@ class CommandHandlers:
         buyback_alerts: BuybackAlertService,
         wco_dex_alerts: WCODexAlertService | None = None,
         wswap_liquidity_alerts: WSwapLiquidityAlertService | None = None,
+        daily_report: DailyReportService | None = None,
     ):
         self.analytics = analytics
         self.settings = settings
         self.buyback_alerts = buyback_alerts
         self.wco_dex_alerts = wco_dex_alerts
         self.wswap_liquidity_alerts = wswap_liquidity_alerts
+        self.daily_report = daily_report
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)
@@ -427,6 +429,28 @@ class CommandHandlers:
 
         summary = await self.wswap_liquidity_alerts.get_all_pairs_summary()
         await message.reply_text(summary, parse_mode="MarkdownV2", disable_web_page_preview=True)
+
+    async def dailyreport(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Manually trigger the daily report. Admin only.
+        Usage: /dailyreport
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.daily_report:
+            await message.reply_text("Daily report service not configured.")
+            return
+
+        await message.reply_text("📊 Generating daily report...")
+
+        try:
+            await self.daily_report.send_daily_report(context.bot)
+            await message.reply_text("✅ Daily report sent successfully!")
+        except Exception as e:
+            logger.exception("Failed to send manual daily report")
+            await message.reply_text(f"❌ Failed to send daily report: {e}")
 
     async def _ensure_message(self, update: Update):
         if not update.message:

@@ -1,11 +1,12 @@
 import logging
+from datetime import time
 
 from telegram import BotCommand
 from telegram.ext import Application, CommandHandler
 
 from app.config import Settings
 from app.handlers.commands import CommandHandlers
-from app.services import AnalyticsService
+from app.services import AnalyticsService, DailyReportService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.exchange_flow_alerts import ExchangeFlowAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
@@ -30,6 +31,7 @@ COMMAND_MENU = [
     BotCommand("liqalerts", "Toggle liquidity alerts (admin only)"),
     BotCommand("liqstatus", "Show liquidity alert status"),
     BotCommand("pairs", "List all WCO pairs on W-Swap"),
+    BotCommand("dailyreport", "Trigger daily metrics report manually"),
 ]
 
 
@@ -40,8 +42,9 @@ def build_application(settings: Settings) -> Application:
     exchange_flow_alerts = ExchangeFlowAlertService(settings, analytics.wchain)
     wco_dex_alerts = WCODexAlertService(settings, analytics.wchain)
     wswap_liquidity_alerts = WSwapLiquidityAlertService(settings, analytics.wchain)
+    daily_report = DailyReportService(settings, analytics.wchain)
     command_handlers = CommandHandlers(
-        analytics, settings, buyback_alerts, wco_dex_alerts, wswap_liquidity_alerts
+        analytics, settings, buyback_alerts, wco_dex_alerts, wswap_liquidity_alerts, daily_report
     )
 
     async def _post_init(application: Application) -> None:
@@ -61,6 +64,9 @@ def build_application(settings: Settings) -> Application:
 
         application.bot_data["wswap_liquidity_alerts"] = wswap_liquidity_alerts
         await wswap_liquidity_alerts.ensure_initialized()
+
+        application.bot_data["daily_report"] = daily_report
+        await daily_report.ensure_initialized()
 
         if application.job_queue:
             application.job_queue.run_repeating(
@@ -125,6 +131,23 @@ def build_application(settings: Settings) -> Application:
                 settings.wswap_liquidity_poll_seconds,
                 settings.wswap_liquidity_alert_channel_id or "unset",
             )
+
+            # Schedule daily report at configured time (default 22:00 UTC)
+            report_time = time(
+                hour=settings.daily_report_hour,
+                minute=settings.daily_report_minute,
+            )
+            application.job_queue.run_daily(
+                daily_report.job_callback,
+                time=report_time,
+                name="daily_report",
+            )
+            logger.info(
+                "Daily report scheduled at %02d:%02d UTC (channel=%s).",
+                settings.daily_report_hour,
+                settings.daily_report_minute,
+                settings.daily_report_channel_id or "unset",
+            )
         else:
             logger.warning("JobQueue not available; buyback alerts will not run.")
 
@@ -151,6 +174,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("liqalerts", command_handlers.liqalerts))
     application.add_handler(CommandHandler("liqstatus", command_handlers.liqstatus))
     application.add_handler(CommandHandler("pairs", command_handlers.pairs))
+    application.add_handler(CommandHandler("dailyreport", command_handlers.dailyreport))
 
     logger.info("Telegram application wired with command handlers.")
     return application
