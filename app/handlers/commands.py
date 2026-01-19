@@ -8,6 +8,7 @@ from telegram.error import TelegramError
 from app.config import Settings
 from app.services import AnalyticsService, DailyReportService
 from app.services.buyback_alerts import BuybackAlertService
+from app.services.exchange_flow_alerts import ExchangeFlowAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
 from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 from app.utils import format_percent, format_token_amount, format_usd, get_resized_brand_image, humanize_number
@@ -30,6 +31,7 @@ class CommandHandlers:
         analytics: AnalyticsService,
         settings: Settings,
         buyback_alerts: BuybackAlertService,
+        exchange_flow_alerts: ExchangeFlowAlertService | None = None,
         wco_dex_alerts: WCODexAlertService | None = None,
         wswap_liquidity_alerts: WSwapLiquidityAlertService | None = None,
         daily_report: DailyReportService | None = None,
@@ -37,6 +39,7 @@ class CommandHandlers:
         self.analytics = analytics
         self.settings = settings
         self.buyback_alerts = buyback_alerts
+        self.exchange_flow_alerts = exchange_flow_alerts
         self.wco_dex_alerts = wco_dex_alerts
         self.wswap_liquidity_alerts = wswap_liquidity_alerts
         self.daily_report = daily_report
@@ -287,6 +290,63 @@ class CommandHandlers:
             amount = Decimal("1")
 
         text = self.buyback_alerts.render_test_message(amount)
+        await self._send_branded_message(message, text)
+
+    async def flowalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Toggle exchange inflow/outflow alerts on/off. Admin only.
+        Usage: /flowalerts [on|off]
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.exchange_flow_alerts:
+            await message.reply_text("Exchange flow alerts service not configured.")
+            return
+
+        user = update.effective_user
+        if not user:
+            await message.reply_text("Unable to identify user.")
+            return
+
+        enable: bool | None = None
+        if context.args:
+            arg = context.args[0].lower()
+            if arg in ("on", "enable", "1", "true", "yes"):
+                enable = True
+            elif arg in ("off", "disable", "0", "false", "no"):
+                enable = False
+
+        success, result_msg = await self.exchange_flow_alerts.toggle_alerts(
+            context.bot, user.id, enable=enable
+        )
+        await message.reply_text(result_msg)
+
+    async def flowstatus(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show exchange flow alert status."""
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.exchange_flow_alerts:
+            await message.reply_text("Exchange flow alerts service not configured.")
+            return
+
+        enabled = self.exchange_flow_alerts.alerts_enabled
+        config_enabled = self.settings.exchange_flow_alerts_enabled
+        channel = self.settings.exchange_flow_alert_channel_id or "Not set"
+        threshold = self.settings.exchange_flow_threshold_wco
+        interval = self.settings.exchange_flow_poll_seconds
+        text = (
+            "📈 *Exchange Flow Alert Status*\n\n"
+            f"• Alerts enabled (bot): {'Yes' if config_enabled else 'No'}\n"
+            f"• Alerts enabled (admin): {'Yes' if enabled else 'No'}\n"
+            f"• Channel: `{channel}`\n"
+            f"• Threshold: {format_token_amount(threshold)} WCO\n"
+            f"• Poll interval: {interval}s\n\n"
+            "Use /flowalerts [on|off] to toggle (admin only)."
+        )
         await self._send_branded_message(message, text)
 
     async def dexalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

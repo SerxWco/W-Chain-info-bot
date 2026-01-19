@@ -26,6 +26,8 @@ COMMAND_MENU = [
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
     BotCommand("buybacktest", "Send a test buyback alert message"),
+    BotCommand("flowalerts", "Toggle exchange flow alerts (admin only)"),
+    BotCommand("flowstatus", "Show exchange flow alert status"),
     BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
     BotCommand("dexstatus", "Show WCO DEX alert status"),
     BotCommand("liqalerts", "Toggle liquidity alerts (admin only)"),
@@ -44,7 +46,13 @@ def build_application(settings: Settings) -> Application:
     wswap_liquidity_alerts = WSwapLiquidityAlertService(settings, analytics.wchain)
     daily_report = DailyReportService(settings, analytics.wchain)
     command_handlers = CommandHandlers(
-        analytics, settings, buyback_alerts, wco_dex_alerts, wswap_liquidity_alerts, daily_report
+        analytics,
+        settings,
+        buyback_alerts,
+        exchange_flow_alerts,
+        wco_dex_alerts,
+        wswap_liquidity_alerts,
+        daily_report,
     )
 
     async def _post_init(application: Application) -> None:
@@ -169,6 +177,8 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
+    application.add_handler(CommandHandler("flowalerts", command_handlers.flowalerts))
+    application.add_handler(CommandHandler("flowstatus", command_handlers.flowstatus))
     application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))
     application.add_handler(CommandHandler("dexstatus", command_handlers.dexstatus))
     application.add_handler(CommandHandler("liqalerts", command_handlers.liqalerts))
