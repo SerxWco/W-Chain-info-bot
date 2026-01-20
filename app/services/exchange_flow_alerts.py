@@ -6,7 +6,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from telegram import Bot
+from telegram import Bot, ChatMember
+from telegram.error import TelegramError
 
 from app.clients.wchain import WChainClient
 from app.config import Settings
@@ -37,6 +38,7 @@ class ExchangeFlowAlertService:
         self.settings = settings
         self.wchain = wchain
         self._lock = asyncio.Lock()
+        self._alerts_enabled: bool = True
 
         self._state_path = Path(self.settings.exchange_flow_alert_state_path)
         self._last_seen_by_exchange: Dict[str, str] = {}
@@ -135,10 +137,54 @@ class ExchangeFlowAlertService:
     async def job_callback(self, context) -> None:
         await self.poll_and_alert(context.bot)
 
+    @property
+    def alerts_enabled(self) -> bool:
+        """Check if alerts are currently enabled."""
+        return self._alerts_enabled
+
+    async def is_admin(self, bot: Bot, chat_id: str | int, user_id: int) -> bool:
+        """Check if a user is an admin in the specified chat/channel."""
+        try:
+            member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+            return member.status in (
+                ChatMember.ADMINISTRATOR,
+                ChatMember.OWNER,
+            )
+        except TelegramError as exc:
+            logger.warning("Failed to check admin status: %s", exc)
+            return False
+
+    async def toggle_alerts(
+        self, bot: Bot, user_id: int, enable: Optional[bool] = None
+    ) -> tuple[bool, str]:
+        """Toggle alerts on/off. Only admins can do this."""
+        channel = self.settings.exchange_flow_alert_channel_id
+        if not channel:
+            return False, "Exchange flow alert channel not configured."
+
+        is_admin = await self.is_admin(bot, channel, user_id)
+        if not is_admin:
+            return False, "⛔ Only channel admins can enable/disable alerts."
+
+        async with self._lock:
+            if enable is None:
+                self._alerts_enabled = not self._alerts_enabled
+            else:
+                self._alerts_enabled = enable
+
+            status = "enabled ✅" if self._alerts_enabled else "disabled ❌"
+            self._save_state()
+
+        return True, f"Exchange flow alerts {status}"
+
     async def poll_and_alert(self, bot: Bot) -> None:
         if not self.settings.exchange_flow_alerts_enabled:
             logger.debug("Exchange flow alerts disabled, skipping poll.")
             return
+        async with self._lock:
+            if not self._alerts_enabled:
+                logger.debug("Exchange flow alerts disabled by admin, skipping poll.")
+                return
         channel = self.settings.exchange_flow_alert_channel_id
         if not channel:
             logger.warning("EXCHANGE_FLOW_ALERT_CHANNEL_ID not configured, skipping alerts.")
@@ -278,6 +324,9 @@ class ExchangeFlowAlertService:
                 if isinstance(k, str) and isinstance(v, str) and k and v:
                     parsed[k] = v
             self._last_seen_by_exchange = parsed
+        alerts_enabled = section.get("alerts_enabled")
+        if isinstance(alerts_enabled, bool):
+            self._alerts_enabled = alerts_enabled
 
     def _save_state(self) -> None:
         data: Dict[str, Any] = {}
@@ -289,6 +338,7 @@ class ExchangeFlowAlertService:
 
         data["exchange_flow"] = {
             "last_seen_by_exchange": dict(self._last_seen_by_exchange),
+            "alerts_enabled": self._alerts_enabled,
             "channel": self.settings.exchange_flow_alert_channel_id,
             "threshold_wco": self.settings.exchange_flow_threshold_wco,
             "exchanges": {ex.key: ex.address for ex in self._exchanges},
