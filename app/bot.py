@@ -26,6 +26,8 @@ COMMAND_MENU = [
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
     BotCommand("buybacktest", "Send a test buyback alert message"),
+    BotCommand("whalealerts", "Toggle whale buy alerts (admin only)"),
+    BotCommand("whalestatus", "Show whale alert status"),
     BotCommand("flowalerts", "Toggle exchange flow alerts (admin only)"),
     BotCommand("flowstatus", "Show exchange flow alert status"),
     BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
@@ -49,6 +51,7 @@ def build_application(settings: Settings) -> Application:
         analytics,
         settings,
         buyback_alerts,
+        whale_alerts,
         exchange_flow_alerts,
         wco_dex_alerts,
         wswap_liquidity_alerts,
@@ -183,6 +186,8 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
+    application.add_handler(CommandHandler("whalealerts", command_handlers.whalealerts))
+    application.add_handler(CommandHandler("whalestatus", command_handlers.whalestatus))
     application.add_handler(CommandHandler("flowalerts", command_handlers.flowalerts))
     application.add_handler(CommandHandler("flowstatus", command_handlers.flowstatus))
     application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))

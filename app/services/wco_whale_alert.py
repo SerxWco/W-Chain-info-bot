@@ -6,7 +6,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from telegram import Bot
+from telegram import Bot, ChatMember
+from telegram.error import TelegramError
 
 from app.clients.wchain import WChainClient
 from app.config import Settings
@@ -41,6 +42,7 @@ class WCOWhaleAlert:
         self.settings = settings
         self.wchain = wchain
         self._lock = asyncio.Lock()
+        self._alerts_enabled: bool = True
 
         self._state_path = Path(self.settings.whale_alert_state_path)
         self._last_seen_key: Optional[str] = None
@@ -78,6 +80,43 @@ class WCOWhaleAlert:
     async def job_callback(self, context) -> None:
         await self.poll_and_alert(context.bot)
 
+    @property
+    def alerts_enabled(self) -> bool:
+        """Check if whale alerts are currently enabled by admins."""
+        return self._alerts_enabled
+
+    async def is_admin(self, bot: Bot, chat_id: str | int, user_id: int) -> bool:
+        """Check if a user is an admin in the whale alert channel."""
+        try:
+            member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+            return member.status in (
+                ChatMember.ADMINISTRATOR,
+                ChatMember.OWNER,
+            )
+        except TelegramError as exc:
+            logger.warning("Failed to check admin status: %s", exc)
+            return False
+
+    async def toggle_alerts(self, bot: Bot, user_id: int, enable: Optional[bool] = None) -> tuple[bool, str]:
+        """Toggle whale alerts on/off. Only channel admins can do this."""
+        channel = self.settings.whale_alert_channel_id
+        if not channel:
+            return False, "Whale alert channel not configured."
+
+        is_admin = await self.is_admin(bot, channel, user_id)
+        if not is_admin:
+            return False, "⛔ Only channel admins can enable/disable alerts."
+
+        async with self._lock:
+            if enable is None:
+                self._alerts_enabled = not self._alerts_enabled
+            else:
+                self._alerts_enabled = enable
+            status = "enabled ✅" if self._alerts_enabled else "disabled ❌"
+            self._save_state()
+
+        return True, f"WCO whale alerts {status}"
+
     async def poll_and_alert(self, bot: Bot) -> None:
         if not self.settings.movement_alerts_enabled:
             logger.debug("Movement alert system disabled, skipping whale poll.")
@@ -94,6 +133,9 @@ class WCOWhaleAlert:
             return
 
         async with self._lock:
+            if not self._alerts_enabled:
+                logger.debug("Whale alerts disabled by admin, skipping poll.")
+                return
             last_seen = self._last_seen_key
 
         payload = await self.wchain.get_address_internal_transactions(
@@ -266,6 +308,9 @@ class WCOWhaleAlert:
         last_seen = whale.get("last_seen_key")
         if isinstance(last_seen, str) and last_seen:
             self._last_seen_key = last_seen
+        alerts_enabled = whale.get("alerts_enabled")
+        if isinstance(alerts_enabled, bool):
+            self._alerts_enabled = alerts_enabled
 
     def _save_state(self) -> None:
         data: Dict[str, Any] = {}
@@ -278,6 +323,7 @@ class WCOWhaleAlert:
 
         data["whale"] = {
             "last_seen_key": self._last_seen_key,
+            "alerts_enabled": self._alerts_enabled,
             "router": self.settings.whale_router_address,
             "channel": self.settings.whale_alert_channel_id,
         }

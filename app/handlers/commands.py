@@ -10,6 +10,7 @@ from app.services import AnalyticsService, DailyReportService
 from app.services.buyback_alerts import BuybackAlertService
 from app.services.exchange_flow_alerts import ExchangeFlowAlertService
 from app.services.wco_dex_alerts import WCODexAlertService
+from app.services.wco_whale_alert import WCOWhaleAlert
 from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 from app.utils import format_percent, format_token_amount, format_usd, get_resized_brand_image, humanize_number
 from decimal import Decimal, InvalidOperation
@@ -31,6 +32,7 @@ class CommandHandlers:
         analytics: AnalyticsService,
         settings: Settings,
         buyback_alerts: BuybackAlertService,
+        whale_alerts: WCOWhaleAlert | None = None,
         exchange_flow_alerts: ExchangeFlowAlertService | None = None,
         wco_dex_alerts: WCODexAlertService | None = None,
         wswap_liquidity_alerts: WSwapLiquidityAlertService | None = None,
@@ -39,6 +41,7 @@ class CommandHandlers:
         self.analytics = analytics
         self.settings = settings
         self.buyback_alerts = buyback_alerts
+        self.whale_alerts = whale_alerts
         self.exchange_flow_alerts = exchange_flow_alerts
         self.wco_dex_alerts = wco_dex_alerts
         self.wswap_liquidity_alerts = wswap_liquidity_alerts
@@ -290,6 +293,69 @@ class CommandHandlers:
             amount = Decimal("1")
 
         text = self.buyback_alerts.render_test_message(amount)
+        await self._send_branded_message(message, text)
+
+    async def whalealerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Toggle whale buy alerts on/off. Admin only.
+        Usage: /whalealerts [on|off]
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+        if not self.settings.movement_alerts_enabled:
+            await message.reply_text("Movement alert system is disabled (MOVEMENT_ALERTS_ENABLED=false).")
+            return
+        if not self.settings.whale_alerts_enabled:
+            await message.reply_text("Whale alerts are disabled (WHALE_ALERTS_ENABLED=false).")
+            return
+
+        if not self.whale_alerts:
+            await message.reply_text("Whale alerts service not configured.")
+            return
+
+        user = update.effective_user
+        if not user:
+            await message.reply_text("Unable to identify user.")
+            return
+
+        enable: bool | None = None
+        if context.args:
+            arg = context.args[0].lower()
+            if arg in ("on", "enable", "1", "true", "yes"):
+                enable = True
+            elif arg in ("off", "disable", "0", "false", "no"):
+                enable = False
+
+        success, result_msg = await self.whale_alerts.toggle_alerts(
+            context.bot, user.id, enable=enable
+        )
+        await message.reply_text(result_msg)
+
+    async def whalestatus(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show whale alert status."""
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        if not self.whale_alerts:
+            await message.reply_text("Whale alerts service not configured.")
+            return
+
+        enabled = self.whale_alerts.alerts_enabled
+        channel = self.settings.whale_alert_channel_id or "Not set"
+        router = self.settings.whale_router_address or "Not set"
+        interval = self.settings.whale_poll_seconds
+        text = (
+            "🐳 *Whale Alert Status*\n\n"
+            f"• Movement system enabled (config): {'Yes' if self.settings.movement_alerts_enabled else 'No'}\n"
+            f"• Alerts enabled (bot): {'Yes' if self.settings.whale_alerts_enabled else 'No'}\n"
+            f"• Alerts enabled (admin): {'Yes' if enabled else 'No'}\n"
+            f"• Channel: `{channel}`\n"
+            f"• Router: `{router}`\n"
+            f"• Poll interval: {interval}s\n\n"
+            "Use /whalealerts [on|off] to toggle (admin only)."
+        )
         await self._send_branded_message(message, text)
 
     async def flowalerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
