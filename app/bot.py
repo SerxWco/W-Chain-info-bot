@@ -61,17 +61,22 @@ def build_application(settings: Settings) -> Application:
         application.bot_data["buyback_alerts"] = buyback_alerts
         await buyback_alerts.ensure_initialized()
 
-        application.bot_data["whale_alerts"] = whale_alerts
-        await whale_alerts.ensure_initialized()
+        if settings.movement_alerts_enabled:
+            application.bot_data["whale_alerts"] = whale_alerts
+            await whale_alerts.ensure_initialized()
 
-        application.bot_data["exchange_flow_alerts"] = exchange_flow_alerts
-        await exchange_flow_alerts.ensure_initialized()
+            application.bot_data["exchange_flow_alerts"] = exchange_flow_alerts
+            await exchange_flow_alerts.ensure_initialized()
 
-        application.bot_data["wco_dex_alerts"] = wco_dex_alerts
-        await wco_dex_alerts.ensure_initialized()
+            application.bot_data["wco_dex_alerts"] = wco_dex_alerts
+            await wco_dex_alerts.ensure_initialized()
 
-        application.bot_data["wswap_liquidity_alerts"] = wswap_liquidity_alerts
-        await wswap_liquidity_alerts.ensure_initialized()
+            application.bot_data["wswap_liquidity_alerts"] = wswap_liquidity_alerts
+            await wswap_liquidity_alerts.ensure_initialized()
+        else:
+            logger.info(
+                "Movement alert system disabled (MOVEMENT_ALERTS_ENABLED=false); skipping whale/flow/dex/liquidity watchers."
+            )
 
         application.bot_data["daily_report"] = daily_report
         await daily_report.ensure_initialized()
@@ -89,56 +94,57 @@ def build_application(settings: Settings) -> Application:
                 settings.buyback_poll_seconds,
             )
 
-            application.job_queue.run_repeating(
-                whale_alerts.job_callback,
-                interval=settings.whale_poll_seconds,
-                first=5,
-                name="wco_whale_alerts",
-            )
-            logger.info(
-                "WCO whale watcher enabled (router=%s interval=%ss channel=%s).",
-                settings.whale_router_address,
-                settings.whale_poll_seconds,
-                settings.whale_alert_channel_id or "unset",
-            )
+            if settings.movement_alerts_enabled:
+                application.job_queue.run_repeating(
+                    whale_alerts.job_callback,
+                    interval=settings.whale_poll_seconds,
+                    first=5,
+                    name="wco_whale_alerts",
+                )
+                logger.info(
+                    "WCO whale watcher enabled (router=%s interval=%ss channel=%s).",
+                    settings.whale_router_address,
+                    settings.whale_poll_seconds,
+                    settings.whale_alert_channel_id or "unset",
+                )
 
-            application.job_queue.run_repeating(
-                exchange_flow_alerts.job_callback,
-                interval=settings.exchange_flow_poll_seconds,
-                first=5,
-                name="exchange_flow_alerts",
-            )
-            logger.info(
-                "Exchange flow watcher enabled (interval=%ss channel=%s threshold=%s WCO).",
-                settings.exchange_flow_poll_seconds,
-                settings.exchange_flow_alert_channel_id or "unset",
-                settings.exchange_flow_threshold_wco,
-            )
+                application.job_queue.run_repeating(
+                    exchange_flow_alerts.job_callback,
+                    interval=settings.exchange_flow_poll_seconds,
+                    first=5,
+                    name="exchange_flow_alerts",
+                )
+                logger.info(
+                    "Exchange flow watcher enabled (interval=%ss channel=%s threshold=%s WCO).",
+                    settings.exchange_flow_poll_seconds,
+                    settings.exchange_flow_alert_channel_id or "unset",
+                    settings.exchange_flow_threshold_wco,
+                )
 
-            application.job_queue.run_repeating(
-                wco_dex_alerts.job_callback,
-                interval=settings.wco_dex_poll_seconds,
-                first=10,
-                name="wco_dex_alerts",
-            )
-            logger.info(
-                "WCO DEX watcher enabled (interval=%ss channel=%s).",
-                settings.wco_dex_poll_seconds,
-                settings.wco_dex_alert_channel_id or "unset",
-            )
+                application.job_queue.run_repeating(
+                    wco_dex_alerts.job_callback,
+                    interval=settings.wco_dex_poll_seconds,
+                    first=10,
+                    name="wco_dex_alerts",
+                )
+                logger.info(
+                    "WCO DEX watcher enabled (interval=%ss channel=%s).",
+                    settings.wco_dex_poll_seconds,
+                    settings.wco_dex_alert_channel_id or "unset",
+                )
 
-            application.job_queue.run_repeating(
-                wswap_liquidity_alerts.job_callback,
-                interval=settings.wswap_liquidity_poll_seconds,
-                first=15,
-                name="wswap_liquidity_alerts",
-            )
-            logger.info(
-                "W-Swap liquidity watcher enabled (factory=%s interval=%ss channel=%s).",
-                settings.wswap_factory_address,
-                settings.wswap_liquidity_poll_seconds,
-                settings.wswap_liquidity_alert_channel_id or "unset",
-            )
+                application.job_queue.run_repeating(
+                    wswap_liquidity_alerts.job_callback,
+                    interval=settings.wswap_liquidity_poll_seconds,
+                    first=15,
+                    name="wswap_liquidity_alerts",
+                )
+                logger.info(
+                    "W-Swap liquidity watcher enabled (factory=%s interval=%ss channel=%s).",
+                    settings.wswap_factory_address,
+                    settings.wswap_liquidity_poll_seconds,
+                    settings.wswap_liquidity_alert_channel_id or "unset",
+                )
 
             # Schedule daily report at configured time (default 22:00 UTC)
             report_time = time(

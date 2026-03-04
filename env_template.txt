@@ -3,6 +3,10 @@
 
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 
+# Global kill-switch for the whale/flow/dex/liquidity movement alert system.
+# When false, the bot still runs and responds to commands, but movement alert jobs will not start.
+# MOVEMENT_ALERTS_ENABLED=false
+
 # Optional overrides
 # BLOCKSCOUT_API_BASE=https://scan.w-chain.com/api/v2
 # HTTP_TIMEOUT=12
