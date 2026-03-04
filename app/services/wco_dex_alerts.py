@@ -135,6 +135,8 @@ class WCODexAlertService:
         """
         On cold start, initialize last_seen markers to avoid spamming historical txs.
         """
+        if not self.settings.movement_alerts_enabled:
+            return
         if not self.settings.wco_dex_alerts_enabled:
             return
         if not self.settings.wco_dex_alert_channel_id:
@@ -268,6 +270,9 @@ class WCODexAlertService:
 
     async def poll_and_alert(self, bot: Bot) -> None:
         """Main polling loop - check for new events and send alerts."""
+        if not self.settings.movement_alerts_enabled:
+            logger.debug("Movement alert system disabled, skipping WCO DEX poll.")
+            return
         if not self.settings.wco_dex_alerts_enabled:
             logger.debug("WCO DEX alerts disabled in config, skipping poll.")
             return

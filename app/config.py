@@ -6,6 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def _env_bool(key: str, default: str = "false") -> bool:
+    return os.getenv(key, default).strip().lower() in _TRUE_VALUES
+
 
 @dataclass(frozen=True)
 class TokenProfile:
@@ -43,9 +49,14 @@ class Settings:
         }
     )
     default_price_symbols: List[str] = field(default_factory=lambda: ["WCO", "WAVE", "USDT", "USDC"])
+
+    # Global kill-switch for on-chain movement alert watchers (whale/flow/dex/liquidity monitors).
+    # When disabled, the bot still runs and responds to commands, but movement alert jobs do not start.
+    movement_alerts_enabled: bool = field(default_factory=lambda: _env_bool("MOVEMENT_ALERTS_ENABLED", "false"))
+
     # Buyback alert settings (incoming native WCO to a watched wallet)
     buyback_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("BUYBACK_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("BUYBACK_ALERTS_ENABLED", "true")
     )
     buyback_wallet_address: str = field(
         default_factory=lambda: os.getenv(
@@ -59,7 +70,7 @@ class Settings:
 
     # WCO Whale alerts (router -> user native WCO buys)
     whale_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("WHALE_ALERTS_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("WHALE_ALERTS_ENABLED", "true")
     )
     whale_router_address: str = field(
         default_factory=lambda: os.getenv(
@@ -75,8 +86,7 @@ class Settings:
 
     # Exchange flow alerts (native WCO in/out of exchange wallets)
     exchange_flow_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERTS_ENABLED", "true").strip().lower()
-        in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("EXCHANGE_FLOW_ALERTS_ENABLED", "true")
     )
     exchange_flow_alert_channel_id: str = field(default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_CHANNEL_ID", "").strip())
     exchange_flow_poll_seconds: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_SECONDS", "20")))
@@ -88,8 +98,7 @@ class Settings:
 
     # WCO DEX alerts (buys/sells/liquidity on W-Swap pools)
     wco_dex_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("WCO_DEX_ALERTS_ENABLED", "true").strip().lower()
-        in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("WCO_DEX_ALERTS_ENABLED", "true")
     )
     wco_dex_alert_channel_id: str = field(
         default_factory=lambda: os.getenv("WCO_DEX_ALERT_CHANNEL_ID", "").strip()
@@ -152,8 +161,7 @@ class Settings:
     )
     # W-Swap liquidity alert settings
     wswap_liquidity_alerts_enabled: bool = field(
-        default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERTS_ENABLED", "true").strip().lower()
-        in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("WSWAP_LIQUIDITY_ALERTS_ENABLED", "true")
     )
     wswap_liquidity_alert_channel_id: str = field(
         default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERT_CHANNEL_ID", "").strip()
@@ -177,8 +185,7 @@ class Settings:
     )
     # Daily report settings
     daily_report_enabled: bool = field(
-        default_factory=lambda: os.getenv("DAILY_REPORT_ENABLED", "true").strip().lower()
-        in {"1", "true", "yes", "on"}
+        default_factory=lambda: _env_bool("DAILY_REPORT_ENABLED", "true")
     )
     daily_report_channel_id: str = field(
         default_factory=lambda: os.getenv("DAILY_REPORT_CHANNEL_ID", "").strip()

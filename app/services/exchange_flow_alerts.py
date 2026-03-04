@@ -113,6 +113,8 @@ class ExchangeFlowAlertService:
         On cold start, set last_seen per exchange to the latest tx so we don't
         spam historical movements.
         """
+        if not self.settings.movement_alerts_enabled:
+            return
         if not self.settings.exchange_flow_alerts_enabled:
             return
         if not self.settings.exchange_flow_alert_channel_id:
@@ -178,6 +180,9 @@ class ExchangeFlowAlertService:
         return True, f"Exchange flow alerts {status}"
 
     async def poll_and_alert(self, bot: Bot) -> None:
+        if not self.settings.movement_alerts_enabled:
+            logger.debug("Movement alert system disabled, skipping exchange flow poll.")
+            return
         if not self.settings.exchange_flow_alerts_enabled:
             logger.debug("Exchange flow alerts disabled, skipping poll.")
             return

@@ -51,6 +51,8 @@ class WCOWhaleAlert:
         On cold start, set last_seen to the latest router internal tx so we don't
         spam historical whale buys.
         """
+        if not self.settings.movement_alerts_enabled:
+            return
         if not self.settings.whale_alerts_enabled:
             return
         if not self.settings.whale_router_address or not self.settings.whale_alert_channel_id:
@@ -77,6 +79,9 @@ class WCOWhaleAlert:
         await self.poll_and_alert(context.bot)
 
     async def poll_and_alert(self, bot: Bot) -> None:
+        if not self.settings.movement_alerts_enabled:
+            logger.debug("Movement alert system disabled, skipping whale poll.")
+            return
         if not self.settings.whale_alerts_enabled:
             logger.debug("Whale alerts disabled, skipping poll.")
             return

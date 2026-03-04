@@ -54,6 +54,7 @@ env_template.txt
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TELEGRAM_BOT_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | **required** |
+| `MOVEMENT_ALERTS_ENABLED` | Master kill-switch for whale/flow/dex/liquidity movement alerts | `false` |
 | `BLOCKSCOUT_API_BASE` | Explorer API base URL | `https://scan.w-chain.com/api/v2` |
 | `HTTP_TIMEOUT` | Upstream HTTP timeout (seconds) | `12` |
 | `PRICE_CACHE_TTL` | TTL for price cache (seconds) | `60` |

@@ -224,6 +224,8 @@ class WSwapLiquidityAlertService:
         """
         On cold start, initialize last_seen markers and discover pairs.
         """
+        if not self.settings.movement_alerts_enabled:
+            return
         if not self.settings.wswap_liquidity_alerts_enabled:
             return
         if not self.settings.wswap_liquidity_alert_channel_id:
@@ -320,6 +322,9 @@ class WSwapLiquidityAlertService:
 
     async def poll_and_alert(self, bot: Bot) -> None:
         """Main polling loop - check for new liquidity events and send alerts."""
+        if not self.settings.movement_alerts_enabled:
+            logger.debug("Movement alert system disabled, skipping liquidity poll.")
+            return
         if not self.settings.wswap_liquidity_alerts_enabled:
             logger.debug("W-Swap liquidity alerts disabled in config, skipping poll.")
             return

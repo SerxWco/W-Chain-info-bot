@@ -300,6 +300,9 @@ class CommandHandlers:
         message = await self._ensure_message(update)
         if not message:
             return
+        if not self.settings.movement_alerts_enabled:
+            await message.reply_text("Movement alert system is disabled (MOVEMENT_ALERTS_ENABLED=false).")
+            return
 
         if not self.exchange_flow_alerts:
             await message.reply_text("Exchange flow alerts service not configured.")
@@ -340,6 +343,7 @@ class CommandHandlers:
         interval = self.settings.exchange_flow_poll_seconds
         text = (
             "📈 *Exchange Flow Alert Status*\n\n"
+            f"• Movement system enabled (config): {'Yes' if self.settings.movement_alerts_enabled else 'No'}\n"
             f"• Alerts enabled (bot): {'Yes' if config_enabled else 'No'}\n"
             f"• Alerts enabled (admin): {'Yes' if enabled else 'No'}\n"
             f"• Channel: `{channel}`\n"
@@ -356,6 +360,9 @@ class CommandHandlers:
         """
         message = await self._ensure_message(update)
         if not message:
+            return
+        if not self.settings.movement_alerts_enabled:
+            await message.reply_text("Movement alert system is disabled (MOVEMENT_ALERTS_ENABLED=false).")
             return
 
         if not self.wco_dex_alerts:
@@ -399,6 +406,7 @@ class CommandHandlers:
 
         text = (
             "📊 *WCO DEX Alert Status*\n\n"
+            f"• Movement system enabled (config): {'Yes' if self.settings.movement_alerts_enabled else 'No'}\n"
             f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
             f"• Channel: `{channel}`\n"
             f"• Auto-delete: {auto_delete}s ({auto_delete // 60} min)\n"
@@ -417,6 +425,9 @@ class CommandHandlers:
         """
         message = await self._ensure_message(update)
         if not message:
+            return
+        if not self.settings.movement_alerts_enabled:
+            await message.reply_text("Movement alert system is disabled (MOVEMENT_ALERTS_ENABLED=false).")
             return
 
         if not self.wswap_liquidity_alerts:
@@ -466,6 +477,7 @@ class CommandHandlers:
 
         text = (
             "💧 *W-Swap Liquidity Alert Status*\n\n"
+            f"• Movement system enabled (config): {'Yes' if self.settings.movement_alerts_enabled else 'No'}\n"
             f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
             f"• Channel: `{channel}`\n"
             f"• WCO Pairs: {pair_count}\n"
