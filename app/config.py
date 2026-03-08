@@ -65,7 +65,12 @@ class Settings:
     )
     buyback_poll_seconds: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_SECONDS", "30")))
     buyback_poll_page_size: int = field(default_factory=lambda: int(os.getenv("BUYBACK_POLL_PAGE_SIZE", "25")))
-    buyback_min_amount_wco: float = field(default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_WCO", "0")))
+    buyback_min_amount_wco: float = field(
+        default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_WCO", "10000000"))
+    )
+    buyback_min_amount_usdt: float = field(
+        default_factory=lambda: float(os.getenv("BUYBACK_MIN_AMOUNT_USDT", "2000"))
+    )
     buyback_alert_state_path: str = field(default_factory=lambda: os.getenv("BUYBACK_ALERT_STATE_PATH", ".alert_state.json"))
 
     # WCO Whale alerts (router -> user native WCO buys)
@@ -82,6 +87,12 @@ class Settings:
     whale_alert_channel_id: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_CHANNEL_ID", "").strip())
     whale_poll_seconds: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_SECONDS", "15")))
     whale_poll_page_size: int = field(default_factory=lambda: int(os.getenv("WHALE_POLL_PAGE_SIZE", "50")))
+    whale_min_amount_wco: float = field(
+        default_factory=lambda: float(os.getenv("WHALE_MIN_AMOUNT_WCO", "10000000"))
+    )
+    whale_min_amount_usdt: float = field(
+        default_factory=lambda: float(os.getenv("WHALE_MIN_AMOUNT_USDT", "2000"))
+    )
     whale_alert_state_path: str = field(default_factory=lambda: os.getenv("WHALE_ALERT_STATE_PATH", ".alert_state.json"))
 
     # Exchange flow alerts (native WCO in/out of exchange wallets)
@@ -91,7 +102,12 @@ class Settings:
     exchange_flow_alert_channel_id: str = field(default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_CHANNEL_ID", "").strip())
     exchange_flow_poll_seconds: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_SECONDS", "20")))
     exchange_flow_poll_page_size: int = field(default_factory=lambda: int(os.getenv("EXCHANGE_FLOW_POLL_PAGE_SIZE", "50")))
-    exchange_flow_threshold_wco: float = field(default_factory=lambda: float(os.getenv("EXCHANGE_FLOW_THRESHOLD_WCO", "3000000")))
+    exchange_flow_threshold_wco: float = field(
+        default_factory=lambda: float(os.getenv("EXCHANGE_FLOW_THRESHOLD_WCO", "10000000"))
+    )
+    exchange_flow_threshold_usdt: float = field(
+        default_factory=lambda: float(os.getenv("EXCHANGE_FLOW_THRESHOLD_USDT", "2000"))
+    )
     exchange_flow_alert_state_path: str = field(
         default_factory=lambda: os.getenv("EXCHANGE_FLOW_ALERT_STATE_PATH", ".alert_state.json")
     )
@@ -121,19 +137,22 @@ class Settings:
     )
     # Minimum WCO amounts for different alert types
     wco_dex_min_buy_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "1000000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "10000000"))
     )
     wco_dex_min_sell_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_SELL_WCO", "1000000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_SELL_WCO", "10000000"))
     )
     wco_dex_min_liquidity_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_LIQUIDITY_WCO", "500000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_LIQUIDITY_WCO", "10000000"))
+    )
+    wco_dex_min_event_usdt: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_MIN_EVENT_USDT", "2000"))
     )
     wco_dex_whale_threshold_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_WCO", "5000000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_WCO", "10000000"))
     )
     wco_dex_whale_threshold_usdt: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_USDT", "1000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_USDT", "2000"))
     )
     wco_dex_alert_state_path: str = field(
         default_factory=lambda: os.getenv("WCO_DEX_ALERT_STATE_PATH", ".alert_state.json")
@@ -187,7 +206,7 @@ class Settings:
     )
     # Minimum USD value for liquidity alerts (filter small events)
     wswap_liquidity_min_usd: float = field(
-        default_factory=lambda: float(os.getenv("WSWAP_LIQUIDITY_MIN_USD", "100"))
+        default_factory=lambda: float(os.getenv("WSWAP_LIQUIDITY_MIN_USD", "2000"))
     )
     wswap_liquidity_alert_state_path: str = field(
         default_factory=lambda: os.getenv("WSWAP_LIQUIDITY_ALERT_STATE_PATH", ".alert_state.json")
@@ -204,7 +223,7 @@ class Settings:
         default_factory=lambda: os.getenv("DAILY_REPORT_CHANNEL_ID", "").strip()
     )
     daily_report_hour: int = field(
-        default_factory=lambda: int(os.getenv("DAILY_REPORT_HOUR", "22"))
+        default_factory=lambda: int(os.getenv("DAILY_REPORT_HOUR", "23"))
     )
     daily_report_minute: int = field(
         default_factory=lambda: int(os.getenv("DAILY_REPORT_MINUTE", "0"))

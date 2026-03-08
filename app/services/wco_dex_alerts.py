@@ -376,11 +376,15 @@ class WCODexAlertService:
                 if amount is None or amount <= 0:
                     continue
 
-                # Check minimum threshold
-                if amount < Decimal(str(self.settings.wco_dex_min_buy_wco)):
+                usd_value = amount * wco_price if wco_price else None
+                meets_wco_threshold = amount >= Decimal(str(self.settings.wco_dex_min_buy_wco))
+                meets_usdt_threshold = (
+                    usd_value is not None
+                    and usd_value >= Decimal(str(self.settings.wco_dex_min_event_usdt))
+                )
+                if not (meets_wco_threshold or meets_usdt_threshold):
                     continue
 
-                usd_value = amount * wco_price if wco_price else None
                 event = WCODexEvent(
                     unique_key=self._unique_key_internal(item) or tx_hash,
                     tx_hash=tx_hash,
@@ -450,6 +454,7 @@ class WCODexAlertService:
         newest_hash = str(new_items[0].get("hash"))
         new_items.reverse()  # oldest-first
         alerts_sent = 0
+        min_event_usdt = Decimal(str(self.settings.wco_dex_min_event_usdt))
 
         for item in new_items:
             tx_hash = str(item.get("hash") or "")
@@ -509,16 +514,16 @@ class WCODexAlertService:
             if event_type in (AlertType.LIQUIDITY_ADDED, AlertType.LIQUIDITY_REMOVED) and not self.settings.wco_dex_liquidity_alerts_enabled:
                 continue
 
-            if amount < min_threshold:
+            usd_value = amount * wco_price if wco_price else None
+            meets_wco_threshold = amount >= min_threshold
+            meets_usdt_threshold = usd_value is not None and usd_value >= min_event_usdt
+            if not (meets_wco_threshold or meets_usdt_threshold):
                 logger.debug(
-                    "Skipping %s event: %.2f WCO below threshold %.2f",
+                    "Skipping %s event: %.2f WCO below WCO/USD thresholds.",
                     event_type.value,
                     amount,
-                    min_threshold,
                 )
                 continue
-
-            usd_value = amount * wco_price if wco_price else None
 
             # Determine the wallet (user) address
             wallet_addr = from_addr if event_type in (AlertType.SELL, AlertType.LIQUIDITY_ADDED) else to_addr

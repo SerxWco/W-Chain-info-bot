@@ -33,9 +33,9 @@ class WCOWhaleAlert:
       - value > 0 (native coin movement)
     """
 
-    MINI_MIN = Decimal("500000")
-    MEGA_MIN = Decimal("1000000")
-    ULTRA_MIN = Decimal("5000000")
+    MINI_MIN = Decimal("10000000")
+    MEGA_MIN = Decimal("20000000")
+    ULTRA_MIN = Decimal("50000000")
 
     def __init__(self, settings: Settings, wchain: WChainClient):
         self.settings = settings
@@ -106,12 +106,22 @@ class WCOWhaleAlert:
             return
         logger.info("Detected %d new whale buy event(s) to process.", len(events))
 
+        wco_price = await self._get_wco_price()
+        min_wco = Decimal(str(self.settings.whale_min_amount_wco))
+        min_usdt = Decimal(str(self.settings.whale_min_amount_usdt))
+
         newest_key = events[-1].unique_key
         alerts_sent = 0
         for event in events:
-            # Tier filter: only alert at/above MINI_MIN
-            if event.amount_wco < self.MINI_MIN:
-                logger.debug("Skipping whale event %s: amount %.2f below threshold.", event.tx_hash, event.amount_wco)
+            usd_value = event.amount_wco * wco_price if wco_price is not None else None
+            meets_wco_threshold = event.amount_wco >= min_wco
+            meets_usdt_threshold = usd_value is not None and usd_value >= min_usdt
+            if not (meets_wco_threshold or meets_usdt_threshold):
+                logger.debug(
+                    "Skipping whale event %s: amount %.2f WCO below WCO/USD thresholds.",
+                    event.tx_hash,
+                    event.amount_wco,
+                )
                 continue
             text = self._render_message(event)
             await self._send_to_channel(bot, channel, text)
@@ -246,6 +256,15 @@ class WCOWhaleAlert:
         if wei <= 0:
             return Decimal(0)
         return wei / Decimal("1000000000000000000")
+
+    async def _get_wco_price(self) -> Optional[Decimal]:
+        try:
+            data = await self.wchain.get_wco_price()
+            if data and "price" in data:
+                return Decimal(str(data["price"]))
+        except Exception as exc:
+            logger.warning("Failed to fetch WCO price for whale thresholding: %s", exc)
+        return None
 
     def _load_state(self) -> None:
         try:

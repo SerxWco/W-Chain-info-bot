@@ -19,7 +19,8 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # BUYBACK_WALLET_ADDRESS=0x81d29c0DcD64fAC05C4A394D455cbD79D210C200
 # BUYBACK_POLL_SECONDS=30
 # BUYBACK_POLL_PAGE_SIZE=25
-# BUYBACK_MIN_AMOUNT_WCO=0
+# BUYBACK_MIN_AMOUNT_WCO=10000000
+# BUYBACK_MIN_AMOUNT_USDT=2000
 # BUYBACK_ALERT_STATE_PATH=.alert_state.json
 
 # WCO whale alerts (router -> user native WCO buys)
@@ -28,6 +29,8 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # WHALE_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
 # WHALE_POLL_SECONDS=15
 # WHALE_POLL_PAGE_SIZE=50
+# WHALE_MIN_AMOUNT_WCO=10000000
+# WHALE_MIN_AMOUNT_USDT=2000
 # WHALE_ALERT_STATE_PATH=.alert_state.json
 
 # Exchange flow alerts (inflow/outflow to exchange wallets)
@@ -35,7 +38,8 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # EXCHANGE_FLOW_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
 # EXCHANGE_FLOW_POLL_SECONDS=20
 # EXCHANGE_FLOW_POLL_PAGE_SIZE=50
-# EXCHANGE_FLOW_THRESHOLD_WCO=3000000
+# EXCHANGE_FLOW_THRESHOLD_WCO=10000000
+# EXCHANGE_FLOW_THRESHOLD_USDT=2000
 # EXCHANGE_FLOW_ALERT_STATE_PATH=.alert_state.json
 
 # WCO DEX alerts (buys/sells/liquidity on W-Swap pools + whale transfers)
@@ -46,19 +50,29 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # WCO_DEX_SWAP_ALERTS_ENABLED=true      # BUY/SELL alerts
 # WCO_DEX_LIQUIDITY_ALERTS_ENABLED=true # liquidity add/remove alerts
 # WCO_DEX_WHALE_ALERTS_ENABLED=true     # whale move alerts
-# WCO_DEX_MIN_BUY_WCO=1000000       # Min WCO for buy alerts (1M)
-# WCO_DEX_MIN_SELL_WCO=1000000      # Min WCO for sell alerts (1M)
-# WCO_DEX_MIN_LIQUIDITY_WCO=500000  # Min WCO for liquidity alerts
-# WCO_DEX_WHALE_THRESHOLD_WCO=5000000   # Min WCO for whale move alerts
-# WCO_DEX_WHALE_THRESHOLD_USDT=1000     # Min USDT-equivalent value for whale move alerts
+# WCO_DEX_MIN_BUY_WCO=10000000       # Min WCO for buy alerts
+# WCO_DEX_MIN_SELL_WCO=10000000      # Min WCO for sell alerts
+# WCO_DEX_MIN_LIQUIDITY_WCO=10000000 # Min WCO for liquidity alerts
+# WCO_DEX_MIN_EVENT_USDT=2000        # Min USDT-equivalent value for buy/sell/liquidity alerts
+# WCO_DEX_WHALE_THRESHOLD_WCO=10000000   # Min WCO for whale move alerts
+# WCO_DEX_WHALE_THRESHOLD_USDT=2000      # Min USDT-equivalent value for whale move alerts
 # WCO_DEX_AUTO_DELETE_SECONDS=300  # Auto-delete messages after 5 minutes (0 = disabled)
 # WCO_DEX_ALERT_STATE_PATH=.alert_state.json
 # WCO_DEX_POOL_ADDRESSES=0xEdB8008031141024d50cA2839A607B2f82C1c045
 # WSWAP_ROUTER_ADDRESS=0x617Fe3C8aF56e115e0E9742247Af0d4477240f53
 
-# Daily report settings (22:00 UTC by default)
+# W-Swap liquidity alerts (factory-wide)
+# WSWAP_LIQUIDITY_ALERTS_ENABLED=true
+# WSWAP_LIQUIDITY_ALERT_CHANNEL_ID=@your_channel_username_or_numeric_id
+# WSWAP_LIQUIDITY_POLL_SECONDS=20
+# WSWAP_LIQUIDITY_POLL_PAGE_SIZE=50
+# WSWAP_LIQUIDITY_MIN_USD=2000
+# WSWAP_LIQUIDITY_ALERT_STATE_PATH=.alert_state.json
+# WSWAP_LIQUIDITY_AUTO_DELETE_SECONDS=600
+
+# Daily report settings (23:00 UTC by default)
 # DAILY_REPORT_ENABLED=true
 # DAILY_REPORT_CHANNEL_ID=@your_channel_username_or_numeric_id
-# DAILY_REPORT_HOUR=22
+# DAILY_REPORT_HOUR=23
 # DAILY_REPORT_MINUTE=0
 # DAILY_REPORT_STATE_PATH=.alert_state.json

@@ -46,7 +46,8 @@ class ExchangeFlowAlertService:
 
         footer = (
             "\n\n📊 Exchange Flow Monitor — WCO Ocean\n"
-            "Threshold: ≥ 3,000,000 WCO"
+            f"Threshold: ≥ {format_token_amount(self.settings.exchange_flow_threshold_wco)} WCO "
+            f"or ${self.settings.exchange_flow_threshold_usdt:,.0f}"
         )
         self._exchanges: list[ExchangeProfile] = [
             ExchangeProfile(
@@ -195,7 +196,9 @@ class ExchangeFlowAlertService:
             logger.warning("EXCHANGE_FLOW_ALERT_CHANNEL_ID not configured, skipping alerts.")
             return
 
-        threshold = Decimal(str(self.settings.exchange_flow_threshold_wco))
+        threshold_wco = Decimal(str(self.settings.exchange_flow_threshold_wco))
+        threshold_usdt = Decimal(str(self.settings.exchange_flow_threshold_usdt))
+        wco_price = await self._get_wco_price()
 
         for ex in self._exchanges:
             async with self._lock:
@@ -234,8 +237,15 @@ class ExchangeFlowAlertService:
                 if not (is_inflow or is_outflow):
                     continue
 
-                if value < threshold:
-                    logger.debug("Skipping %s flow: %.2f WCO below threshold %.2f.", ex.display_name, value, threshold)
+                usd_value = value * wco_price if wco_price is not None else None
+                meets_wco_threshold = value >= threshold_wco
+                meets_usdt_threshold = usd_value is not None and usd_value >= threshold_usdt
+                if not (meets_wco_threshold or meets_usdt_threshold):
+                    logger.debug(
+                        "Skipping %s flow: %.2f WCO below WCO/USD thresholds.",
+                        ex.display_name,
+                        value,
+                    )
                     continue
 
                 amount_display = format_token_amount(value)
@@ -306,6 +316,15 @@ class ExchangeFlowAlertService:
             return Decimal(0)
         return wei / Decimal("1000000000000000000")
 
+    async def _get_wco_price(self) -> Optional[Decimal]:
+        try:
+            data = await self.wchain.get_wco_price()
+            if data and "price" in data:
+                return Decimal(str(data["price"]))
+        except Exception as exc:
+            logger.warning("Failed to fetch WCO price for exchange-flow thresholding: %s", exc)
+        return None
+
     def _load_state(self) -> None:
         try:
             raw = self._state_path.read_text(encoding="utf-8")
@@ -346,6 +365,7 @@ class ExchangeFlowAlertService:
             "alerts_enabled": self._alerts_enabled,
             "channel": self.settings.exchange_flow_alert_channel_id,
             "threshold_wco": self.settings.exchange_flow_threshold_wco,
+            "threshold_usdt": self.settings.exchange_flow_threshold_usdt,
             "exchanges": {ex.key: ex.address for ex in self._exchanges},
         }
         try:

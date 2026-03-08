@@ -100,12 +100,23 @@ class BuybackAlertService:
             return
         logger.info("Detected %d new buyback event(s) to process.", len(events))
 
+        wco_price = await self._get_wco_price()
+        min_wco = Decimal(str(self.settings.buyback_min_amount_wco))
+        min_usdt = Decimal(str(self.settings.buyback_min_amount_usdt))
+
         # Send oldest -> newest, and only advance last_seen after send attempts.
         newest_hash = events[-1].tx_hash
         alerts_sent = 0
         for event in events:
-            if event.amount_wco < Decimal(str(self.settings.buyback_min_amount_wco)):
-                logger.debug("Skipping buyback event %s: amount %.2f below minimum.", event.tx_hash, event.amount_wco)
+            usd_value = event.amount_wco * wco_price if wco_price is not None else None
+            meets_wco_threshold = event.amount_wco >= min_wco
+            meets_usdt_threshold = usd_value is not None and usd_value >= min_usdt
+            if not (meets_wco_threshold or meets_usdt_threshold):
+                logger.debug(
+                    "Skipping buyback event %s: amount %.2f WCO below WCO/USD thresholds.",
+                    event.tx_hash,
+                    event.amount_wco,
+                )
                 continue
             text = self._render_message(event.amount_wco)
             await self._broadcast(bot, subscribers, text)
@@ -213,6 +224,15 @@ class BuybackAlertService:
         if wei <= 0:
             return Decimal(0)
         return wei / Decimal("1000000000000000000")
+
+    async def _get_wco_price(self) -> Optional[Decimal]:
+        try:
+            data = await self.wchain.get_wco_price()
+            if data and "price" in data:
+                return Decimal(str(data["price"]))
+        except Exception as exc:
+            logger.warning("Failed to fetch WCO price for buyback thresholding: %s", exc)
+        return None
 
     def _load_state(self) -> None:
         try:

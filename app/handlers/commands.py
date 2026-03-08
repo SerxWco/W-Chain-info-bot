@@ -264,6 +264,8 @@ class CommandHandlers:
             f"• Alerts enabled (bot): {'Yes' if enabled else 'No'}\n"
             f"• Subscribed (this chat): {'Yes' if subscribed else 'No'}\n"
             f"• Wallet watched: `{self.settings.buyback_wallet_address}`\n"
+            f"• Threshold: {format_token_amount(self.settings.buyback_min_amount_wco)} WCO "
+            f"or ${self.settings.buyback_min_amount_usdt:,.2f} USDT\n"
             f"• Poll interval: {self.settings.buyback_poll_seconds}s\n\n"
             "Use /buybackalerts to toggle alerts in this chat."
         )
@@ -342,6 +344,7 @@ class CommandHandlers:
         config_enabled = self.settings.exchange_flow_alerts_enabled
         channel = self.settings.exchange_flow_alert_channel_id or "Not set"
         threshold = self.settings.exchange_flow_threshold_wco
+        threshold_usdt = self.settings.exchange_flow_threshold_usdt
         interval = self.settings.exchange_flow_poll_seconds
         text = (
             "📈 *Exchange Flow Alert Status*\n\n"
@@ -349,7 +352,7 @@ class CommandHandlers:
             f"• Alerts enabled (bot): {'Yes' if config_enabled else 'No'}\n"
             f"• Alerts enabled (admin): {'Yes' if enabled else 'No'}\n"
             f"• Channel: `{channel}`\n"
-            f"• Threshold: {format_token_amount(threshold)} WCO\n"
+            f"• Threshold: {format_token_amount(threshold)} WCO or ${threshold_usdt:,.2f} USDT\n"
             f"• Poll interval: {interval}s\n\n"
             "Use /flowalerts [on|off] to toggle (admin only)."
         )
@@ -418,6 +421,7 @@ class CommandHandlers:
             f"• Buy threshold: {format_token_amount(self.settings.wco_dex_min_buy_wco)} WCO\n"
             f"• Sell threshold: {format_token_amount(self.settings.wco_dex_min_sell_wco)} WCO\n"
             f"• Liquidity threshold: {format_token_amount(self.settings.wco_dex_min_liquidity_wco)} WCO\n"
+            f"• Event USD threshold: ${self.settings.wco_dex_min_event_usdt:,.2f} USDT\n"
             f"• Whale threshold: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO "
             f"or ${self.settings.wco_dex_whale_threshold_usdt:,.2f} USDT\n\n"
             "Use /dexalerts [on|off] to toggle (admin only)."
@@ -446,13 +450,16 @@ class CommandHandlers:
             "• *CEX Flow*:\n"
             f"  - Config: {'On' if self.settings.exchange_flow_alerts_enabled else 'Off'}\n"
             f"  - Admin runtime: {'On' if flow_admin_enabled else 'Off'}\n"
-            f"  - Threshold: {format_token_amount(self.settings.exchange_flow_threshold_wco)} WCO\n\n"
+            f"  - Threshold: {format_token_amount(self.settings.exchange_flow_threshold_wco)} WCO "
+            f"or ${self.settings.exchange_flow_threshold_usdt:,.2f} USDT\n\n"
             "• *DEX*:\n"
             f"  - Config: {'On' if self.settings.wco_dex_alerts_enabled else 'Off'}\n"
             f"  - Admin runtime: {'On' if dex_admin_enabled else 'Off'}\n"
             f"  - Swaps bucket: {'On' if self.settings.wco_dex_swap_alerts_enabled else 'Off'}\n"
             f"  - Liquidity bucket: {'On' if self.settings.wco_dex_liquidity_alerts_enabled else 'Off'}\n"
             f"  - Whale bucket: {'On' if self.settings.wco_dex_whale_alerts_enabled else 'Off'}\n"
+            f"  - Event trigger: {format_token_amount(self.settings.wco_dex_min_buy_wco)} WCO "
+            f"or ${self.settings.wco_dex_min_event_usdt:,.2f} USDT\n"
             f"  - Whale trigger: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO "
             f"or ${self.settings.wco_dex_whale_threshold_usdt:,.2f} USDT\n\n"
             "• *Liquidity watcher (factory-wide)*:\n"
