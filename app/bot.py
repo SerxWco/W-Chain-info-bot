@@ -26,6 +26,7 @@ COMMAND_MENU = [
     BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
     BotCommand("buybackstatus", "Show buyback alert status"),
     BotCommand("buybacktest", "Send a test buyback alert message"),
+    BotCommand("alerts", "Unified status for all alert systems"),
     BotCommand("flowalerts", "Toggle exchange flow alerts (admin only)"),
     BotCommand("flowstatus", "Show exchange flow alert status"),
     BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
@@ -183,6 +184,7 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
     application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
     application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
+    application.add_handler(CommandHandler("alerts", command_handlers.alerts))
     application.add_handler(CommandHandler("flowalerts", command_handlers.flowalerts))
     application.add_handler(CommandHandler("flowstatus", command_handlers.flowstatus))
     application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))

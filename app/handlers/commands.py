@@ -71,6 +71,8 @@ class CommandHandlers:
             "Network activity & wallet health\n\n"
             "📦 /tokens\n"
             "Featured W-Chain assets\n\n"
+            "⚙️ /alerts\n"
+            "Unified alert status (all systems)\n\n"
             "━━━━━━━━━━━━━━━━━━\n"
             "🪙 FEATURED TOKENS\n"
             "━━━━━━━━━━━━━━━━━━\n\n"
@@ -410,12 +412,54 @@ class CommandHandlers:
             f"• Alerts: {'✅ Enabled' if enabled else '❌ Disabled'}\n"
             f"• Channel: `{channel}`\n"
             f"• Auto-delete: {auto_delete}s ({auto_delete // 60} min)\n"
+            f"• Swaps bucket: {'On' if self.settings.wco_dex_swap_alerts_enabled else 'Off'}\n"
+            f"• Liquidity bucket: {'On' if self.settings.wco_dex_liquidity_alerts_enabled else 'Off'}\n"
+            f"• Whale bucket: {'On' if self.settings.wco_dex_whale_alerts_enabled else 'Off'}\n"
             f"• Buy threshold: {format_token_amount(self.settings.wco_dex_min_buy_wco)} WCO\n"
             f"• Sell threshold: {format_token_amount(self.settings.wco_dex_min_sell_wco)} WCO\n"
             f"• Liquidity threshold: {format_token_amount(self.settings.wco_dex_min_liquidity_wco)} WCO\n"
             f"• Whale threshold: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO "
             f"or ${self.settings.wco_dex_whale_threshold_usdt:,.2f} USDT\n\n"
             "Use /dexalerts [on|off] to toggle (admin only)."
+        )
+        await self._send_branded_message(message, text)
+
+    async def alerts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Unified alert status across all movement modules.
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        buyback_subscribed = self.buyback_alerts.is_subscribed(message.chat_id)
+        flow_admin_enabled = self.exchange_flow_alerts.alerts_enabled if self.exchange_flow_alerts else False
+        dex_admin_enabled = self.wco_dex_alerts.alerts_enabled if self.wco_dex_alerts else False
+        liq_admin_enabled = self.wswap_liquidity_alerts.alerts_enabled if self.wswap_liquidity_alerts else False
+
+        text = (
+            "🧭 *Unified Alert Status*\n\n"
+            f"*Global movement system:* {'✅ On' if self.settings.movement_alerts_enabled else '❌ Off'}\n\n"
+            "• *Buyback*:\n"
+            f"  - Bot setting: {'On' if self.settings.buyback_alerts_enabled else 'Off'}\n"
+            f"  - This chat subscribed: {'Yes' if buyback_subscribed else 'No'}\n\n"
+            "• *CEX Flow*:\n"
+            f"  - Config: {'On' if self.settings.exchange_flow_alerts_enabled else 'Off'}\n"
+            f"  - Admin runtime: {'On' if flow_admin_enabled else 'Off'}\n"
+            f"  - Threshold: {format_token_amount(self.settings.exchange_flow_threshold_wco)} WCO\n\n"
+            "• *DEX*:\n"
+            f"  - Config: {'On' if self.settings.wco_dex_alerts_enabled else 'Off'}\n"
+            f"  - Admin runtime: {'On' if dex_admin_enabled else 'Off'}\n"
+            f"  - Swaps bucket: {'On' if self.settings.wco_dex_swap_alerts_enabled else 'Off'}\n"
+            f"  - Liquidity bucket: {'On' if self.settings.wco_dex_liquidity_alerts_enabled else 'Off'}\n"
+            f"  - Whale bucket: {'On' if self.settings.wco_dex_whale_alerts_enabled else 'Off'}\n"
+            f"  - Whale trigger: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO "
+            f"or ${self.settings.wco_dex_whale_threshold_usdt:,.2f} USDT\n\n"
+            "• *Liquidity watcher (factory-wide)*:\n"
+            f"  - Config: {'On' if self.settings.wswap_liquidity_alerts_enabled else 'Off'}\n"
+            f"  - Admin runtime: {'On' if liq_admin_enabled else 'Off'}\n"
+            f"  - Min USD: ${self.settings.wswap_liquidity_min_usd:,.0f}\n\n"
+            "Use /flowalerts, /dexalerts, /liqalerts for admin toggles."
         )
         await self._send_branded_message(message, text)
 

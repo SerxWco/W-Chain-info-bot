@@ -109,6 +109,16 @@ class Settings:
     wco_dex_poll_page_size: int = field(
         default_factory=lambda: int(os.getenv("WCO_DEX_POLL_PAGE_SIZE", "50"))
     )
+    # Fine-grained DEX alert switches to simplify operations by market regime.
+    wco_dex_swap_alerts_enabled: bool = field(
+        default_factory=lambda: _env_bool("WCO_DEX_SWAP_ALERTS_ENABLED", "true")
+    )
+    wco_dex_liquidity_alerts_enabled: bool = field(
+        default_factory=lambda: _env_bool("WCO_DEX_LIQUIDITY_ALERTS_ENABLED", "true")
+    )
+    wco_dex_whale_alerts_enabled: bool = field(
+        default_factory=lambda: _env_bool("WCO_DEX_WHALE_ALERTS_ENABLED", "true")
+    )
     # Minimum WCO amounts for different alert types
     wco_dex_min_buy_wco: float = field(
         default_factory=lambda: float(os.getenv("WCO_DEX_MIN_BUY_WCO", "1000000"))

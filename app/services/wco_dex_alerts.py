@@ -290,15 +290,15 @@ class WCODexAlertService:
         # Get current WCO price for USD calculations
         wco_price = await self._get_wco_price()
 
-        # Poll router for internal transactions (buys via swaps)
-        await self._poll_router_buys(bot, channel, wco_price)
+        # Poll router + pools only when swap or liquidity alerts are enabled.
+        if self.settings.wco_dex_swap_alerts_enabled or self.settings.wco_dex_liquidity_alerts_enabled:
+            await self._poll_router_buys(bot, channel, wco_price)
+            for pool in self._pools:
+                await self._poll_pool(bot, channel, pool, wco_price)
 
-        # Poll each pool for direct transfers
-        for pool in self._pools:
-            await self._poll_pool(bot, channel, pool, wco_price)
-
-        # Poll for whale transfers (large transfers not involving pools)
-        await self._poll_whale_transfers(bot, channel, wco_price)
+        # Poll for whale transfers when whale alerts are enabled.
+        if self.settings.wco_dex_whale_alerts_enabled:
+            await self._poll_whale_transfers(bot, channel, wco_price)
 
     async def _poll_router_buys(
         self,
@@ -310,6 +310,9 @@ class WCODexAlertService:
         Poll router for outgoing native WCO internal transactions.
         When router sends WCO to a user, it's a BUY.
         """
+        if not self.settings.wco_dex_swap_alerts_enabled:
+            return
+
         router = self.settings.wswap_router_address
         if not router:
             return
@@ -413,6 +416,9 @@ class WCODexAlertService:
         wco_price: Optional[Decimal],
     ) -> None:
         """Poll a specific pool for WCO transactions."""
+        if not (self.settings.wco_dex_swap_alerts_enabled or self.settings.wco_dex_liquidity_alerts_enabled):
+            return
+
         pool_addr_lower = pool.address.lower()
 
         async with self._lock:
@@ -498,6 +504,11 @@ class WCODexAlertService:
             if event_type is None:
                 continue
 
+            if event_type in (AlertType.BUY, AlertType.SELL) and not self.settings.wco_dex_swap_alerts_enabled:
+                continue
+            if event_type in (AlertType.LIQUIDITY_ADDED, AlertType.LIQUIDITY_REMOVED) and not self.settings.wco_dex_liquidity_alerts_enabled:
+                continue
+
             if amount < min_threshold:
                 logger.debug(
                     "Skipping %s event: %.2f WCO below threshold %.2f",
@@ -553,6 +564,9 @@ class WCODexAlertService:
         Poll recent transactions for large native WCO transfers
         that do NOT involve any known pool or exchange addresses.
         """
+        if not self.settings.wco_dex_whale_alerts_enabled:
+            return
+
         async with self._lock:
             last_seen = self._last_seen_whale_tx
 
