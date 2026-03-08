@@ -581,7 +581,8 @@ class WCODexAlertService:
         newest_hash = str(new_items[0].get("hash"))
         new_items.reverse()  # oldest-first
         alerts_sent = 0
-        whale_threshold = Decimal(str(self.settings.wco_dex_whale_threshold_wco))
+        whale_threshold_wco = Decimal(str(self.settings.wco_dex_whale_threshold_wco))
+        whale_threshold_usdt = Decimal(str(self.settings.wco_dex_whale_threshold_usdt))
 
         # Combine excluded addresses (pools + exchanges + router)
         excluded_addresses = (
@@ -602,10 +603,6 @@ class WCODexAlertService:
             # Only process transactions with native value transfer
             amount = self._parse_wco_amount(item.get("value"))
             if amount is None or amount <= 0:
-                continue
-
-            # Must be above whale threshold
-            if amount < whale_threshold:
                 continue
 
             from_obj = item.get("from") or {}
@@ -629,8 +626,15 @@ class WCODexAlertService:
                 # This might be a DEX swap, skip for whale alerts
                 continue
 
-            # This is a whale transfer
             usd_value = amount * wco_price if wco_price else None
+
+            # Trigger whale move alerts for very large WCO transfers OR high USD value.
+            meets_wco_threshold = amount >= whale_threshold_wco
+            meets_usdt_threshold = usd_value is not None and usd_value >= whale_threshold_usdt
+            if not (meets_wco_threshold or meets_usdt_threshold):
+                continue
+
+            # This is a whale transfer
 
             event = WCODexEvent(
                 unique_key=tx_hash,

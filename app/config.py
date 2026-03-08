@@ -120,7 +120,10 @@ class Settings:
         default_factory=lambda: float(os.getenv("WCO_DEX_MIN_LIQUIDITY_WCO", "500000"))
     )
     wco_dex_whale_threshold_wco: float = field(
-        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_WCO", "1000000"))
+        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_WCO", "5000000"))
+    )
+    wco_dex_whale_threshold_usdt: float = field(
+        default_factory=lambda: float(os.getenv("WCO_DEX_WHALE_THRESHOLD_USDT", "1000"))
     )
     wco_dex_alert_state_path: str = field(
         default_factory=lambda: os.getenv("WCO_DEX_ALERT_STATE_PATH", ".alert_state.json")

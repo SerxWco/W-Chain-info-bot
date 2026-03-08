@@ -413,7 +413,8 @@ class CommandHandlers:
             f"• Buy threshold: {format_token_amount(self.settings.wco_dex_min_buy_wco)} WCO\n"
             f"• Sell threshold: {format_token_amount(self.settings.wco_dex_min_sell_wco)} WCO\n"
             f"• Liquidity threshold: {format_token_amount(self.settings.wco_dex_min_liquidity_wco)} WCO\n"
-            f"• Whale threshold: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO\n\n"
+            f"• Whale threshold: {format_token_amount(self.settings.wco_dex_whale_threshold_wco)} WCO "
+            f"or ${self.settings.wco_dex_whale_threshold_usdt:,.2f} USDT\n\n"
             "Use /dexalerts [on|off] to toggle (admin only)."
         )
         await self._send_branded_message(message, text)
