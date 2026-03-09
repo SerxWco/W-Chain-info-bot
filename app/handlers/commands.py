@@ -288,15 +288,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.exchange_flow_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.exchange_flow_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -349,16 +342,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        # Determine if enabling or disabling
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.wco_dex_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.wco_dex_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -415,16 +400,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        # Determine if enabling or disabling
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.wswap_liquidity_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.wswap_liquidity_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -522,6 +499,17 @@ class CommandHandlers:
         if send_text:
             await message.reply_text(text, parse_mode=parse_mode)
 
+    @staticmethod
+    def _parse_toggle_argument(args: list[str]) -> bool | None:
+        if not args:
+            return None
+        arg = args[0].lower()
+        if arg in ("on", "enable", "1", "true", "yes"):
+            return True
+        if arg in ("off", "disable", "0", "false", "no"):
+            return False
+        return None
+
     def _token_reference_section(self) -> str:
         # Fixed display order with emoji and label
         token_display = [
@@ -534,7 +522,7 @@ class CommandHandlers:
             ("🔴", "XRP"),
             ("⚪", "Wrapped WCO (WWCO)"),
         ]
-        
+
         lines = ["🌊 *W-Chain Tokens*\n"]
         for emoji, label in token_display:
             lines.append(f"{emoji} {label}")
