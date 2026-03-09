@@ -15,17 +15,21 @@ from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 
 logger = logging.getLogger(__name__)
 
-# Single source of truth for command menu and registration order.
-COMMAND_SPECS = [
+# Core commands shown in Telegram's command menu.
+PUBLIC_COMMAND_SPECS = [
     ("start", "start", "Welcome message and command list"),
     ("help", "start", "Quick reminder of available commands"),
     ("wco", "wco", "WCO price and supply analytics"),
     ("wave", "wave", "WAVE token snapshot"),
     ("price", "price", "Multi-token price lookup"),
     ("token", "token", "Token details lookup (e.g. /token SOL)"),
-    ("tokens", "tokens", "Key W-Chain ecosystem assets"),
     ("stats", "stats", "Network throughput and gas metrics"),
     ("dailyreport", "dailyreport", "Trigger daily metrics report manually"),
+]
+
+# Advanced/admin commands are still registered, but hidden from the menu.
+HIDDEN_COMMAND_SPECS = [
+    ("tokens", "tokens", "Key W-Chain ecosystem assets"),
     ("buybackstatus", "buybackstatus", "Show buyback alert status"),
     ("buybackalerts", "buybackalerts", "Toggle buyback alerts in this chat"),
     ("buybacktest", "buybacktest", "Send a test buyback alert message"),
@@ -37,11 +41,12 @@ COMMAND_SPECS = [
     ("liqalerts", "liqalerts", "Toggle liquidity alerts (admin only)"),
     ("pairs", "pairs", "List all WCO pairs on W-Swap"),
 ]
-COMMAND_MENU = [BotCommand(command, description) for command, _, description in COMMAND_SPECS]
+ALL_COMMAND_SPECS = [*PUBLIC_COMMAND_SPECS, *HIDDEN_COMMAND_SPECS]
+COMMAND_MENU = [BotCommand(command, description) for command, _, description in PUBLIC_COMMAND_SPECS]
 
 
 def _register_command_handlers(application: Application, command_handlers: CommandHandlers) -> None:
-    for command, handler_name, _ in COMMAND_SPECS:
+    for command, handler_name, _ in ALL_COMMAND_SPECS:
         application.add_handler(CommandHandler(command, getattr(command_handlers, handler_name)))
 
 
