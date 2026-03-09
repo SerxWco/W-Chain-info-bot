@@ -146,7 +146,7 @@ def build_application(settings: Settings) -> Application:
                     settings.wswap_liquidity_alert_channel_id or "unset",
                 )
 
-            # Schedule daily report at configured time (default 22:00 UTC)
+            # Schedule daily report at configured time (default 23:00 UTC)
             report_time = time(
                 hour=settings.daily_report_hour,
                 minute=settings.daily_report_minute,

@@ -194,7 +194,7 @@ class Settings:
         default_factory=lambda: os.getenv("DAILY_REPORT_CHANNEL_ID", "").strip()
     )
     daily_report_hour: int = field(
-        default_factory=lambda: int(os.getenv("DAILY_REPORT_HOUR", "22"))
+        default_factory=lambda: int(os.getenv("DAILY_REPORT_HOUR", "23"))
     )
     daily_report_minute: int = field(
         default_factory=lambda: int(os.getenv("DAILY_REPORT_MINUTE", "0"))
