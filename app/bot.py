@@ -14,27 +14,148 @@ from app.services.wco_whale_alert import WCOWhaleAlert
 from app.services.wswap_liquidity_alerts import WSwapLiquidityAlertService
 
 logger = logging.getLogger(__name__)
-COMMAND_MENU = [
-    BotCommand("start", "Welcome message and command list"),
-    BotCommand("help", "Quick reminder of available commands"),
-    BotCommand("wco", "WCO price and supply analytics"),
-    BotCommand("wave", "WAVE token snapshot"),
-    BotCommand("price", "Multi-token price lookup"),
-    BotCommand("stats", "Network throughput and gas metrics"),
-    BotCommand("tokens", "Key W-Chain ecosystem assets"),
-    BotCommand("token", "Token details lookup (e.g. /token SOL)"),
-    BotCommand("buybackalerts", "Toggle buyback alerts in this chat"),
-    BotCommand("buybackstatus", "Show buyback alert status"),
-    BotCommand("buybacktest", "Send a test buyback alert message"),
-    BotCommand("flowalerts", "Toggle exchange flow alerts (admin only)"),
-    BotCommand("flowstatus", "Show exchange flow alert status"),
-    BotCommand("dexalerts", "Toggle WCO DEX alerts (admin only)"),
-    BotCommand("dexstatus", "Show WCO DEX alert status"),
-    BotCommand("liqalerts", "Toggle liquidity alerts (admin only)"),
-    BotCommand("liqstatus", "Show liquidity alert status"),
-    BotCommand("pairs", "List all WCO pairs on W-Swap"),
-    BotCommand("dailyreport", "Trigger daily metrics report manually"),
+
+# Core commands shown in Telegram's command menu.
+PUBLIC_COMMAND_SPECS = [
+    ("start", "start", "Welcome message and command list"),
+    ("help", "start", "Quick reminder of available commands"),
+    ("wco", "wco", "WCO price and supply analytics"),
+    ("wave", "wave", "WAVE token snapshot"),
+    ("price", "price", "Multi-token price lookup"),
+    ("token", "token", "Token details lookup (e.g. /token SOL)"),
+    ("stats", "stats", "Network throughput and gas metrics"),
+    ("dailyreport", "dailyreport", "Trigger daily metrics report manually"),
 ]
+
+# Advanced/admin commands are still registered, but hidden from the menu.
+HIDDEN_COMMAND_SPECS = [
+    ("tokens", "tokens", "Key W-Chain ecosystem assets"),
+    ("buybackstatus", "buybackstatus", "Show buyback alert status"),
+    ("buybackalerts", "buybackalerts", "Toggle buyback alerts in this chat"),
+    ("buybacktest", "buybacktest", "Send a test buyback alert message"),
+    ("flowstatus", "flowstatus", "Show exchange flow alert status"),
+    ("flowalerts", "flowalerts", "Toggle exchange flow alerts (admin only)"),
+    ("dexstatus", "dexstatus", "Show WCO DEX alert status"),
+    ("dexalerts", "dexalerts", "Toggle WCO DEX alerts (admin only)"),
+    ("liqstatus", "liqstatus", "Show liquidity alert status"),
+    ("liqalerts", "liqalerts", "Toggle liquidity alerts (admin only)"),
+    ("pairs", "pairs", "List all WCO pairs on W-Swap"),
+]
+ALL_COMMAND_SPECS = [*PUBLIC_COMMAND_SPECS, *HIDDEN_COMMAND_SPECS]
+COMMAND_MENU = [BotCommand(command, description) for command, _, description in PUBLIC_COMMAND_SPECS]
+
+
+def _register_command_handlers(application: Application, command_handlers: CommandHandlers) -> None:
+    for command, handler_name, _ in ALL_COMMAND_SPECS:
+        application.add_handler(CommandHandler(command, getattr(command_handlers, handler_name)))
+
+
+def _schedule_job_queue_jobs(
+    application: Application,
+    settings: Settings,
+    buyback_alerts: BuybackAlertService,
+    whale_alerts: WCOWhaleAlert,
+    exchange_flow_alerts: ExchangeFlowAlertService,
+    wco_dex_alerts: WCODexAlertService,
+    wswap_liquidity_alerts: WSwapLiquidityAlertService,
+    daily_report: DailyReportService,
+) -> None:
+    job_queue = application.job_queue
+    if not job_queue:
+        logger.warning("JobQueue not available; scheduled alert watchers and daily report will not run.")
+        return
+
+    # Always-on jobs
+    job_queue.run_repeating(
+        buyback_alerts.job_callback,
+        interval=settings.buyback_poll_seconds,
+        first=5,
+        name="buyback_alerts",
+    )
+    logger.info(
+        "Buyback watcher enabled (wallet=%s interval=%ss).",
+        settings.buyback_wallet_address,
+        settings.buyback_poll_seconds,
+    )
+
+    # Schedule daily report at configured time (default 23:00 UTC)
+    report_time = time(
+        hour=settings.daily_report_hour,
+        minute=settings.daily_report_minute,
+    )
+    job_queue.run_daily(
+        daily_report.job_callback,
+        time=report_time,
+        name="daily_report",
+    )
+    logger.info(
+        "Daily report scheduled at %02d:%02d UTC (channel=%s).",
+        settings.daily_report_hour,
+        settings.daily_report_minute,
+        settings.daily_report_channel_id or "unset",
+    )
+
+    if not settings.movement_alerts_enabled:
+        return
+
+    # Optional movement watchers
+    movement_jobs = [
+        (
+            whale_alerts.job_callback,
+            settings.whale_poll_seconds,
+            5,
+            "wco_whale_alerts",
+            "WCO whale watcher enabled (router=%s interval=%ss channel=%s).",
+            (
+                settings.whale_router_address,
+                settings.whale_poll_seconds,
+                settings.whale_alert_channel_id or "unset",
+            ),
+        ),
+        (
+            exchange_flow_alerts.job_callback,
+            settings.exchange_flow_poll_seconds,
+            5,
+            "exchange_flow_alerts",
+            "Exchange flow watcher enabled (interval=%ss channel=%s threshold=%s WCO).",
+            (
+                settings.exchange_flow_poll_seconds,
+                settings.exchange_flow_alert_channel_id or "unset",
+                settings.exchange_flow_threshold_wco,
+            ),
+        ),
+        (
+            wco_dex_alerts.job_callback,
+            settings.wco_dex_poll_seconds,
+            10,
+            "wco_dex_alerts",
+            "WCO DEX watcher enabled (interval=%ss channel=%s).",
+            (
+                settings.wco_dex_poll_seconds,
+                settings.wco_dex_alert_channel_id or "unset",
+            ),
+        ),
+        (
+            wswap_liquidity_alerts.job_callback,
+            settings.wswap_liquidity_poll_seconds,
+            15,
+            "wswap_liquidity_alerts",
+            "W-Swap liquidity watcher enabled (factory=%s interval=%ss channel=%s).",
+            (
+                settings.wswap_factory_address,
+                settings.wswap_liquidity_poll_seconds,
+                settings.wswap_liquidity_alert_channel_id or "unset",
+            ),
+        ),
+    ]
+    for callback, interval, first, name, message, args in movement_jobs:
+        job_queue.run_repeating(
+            callback,
+            interval=interval,
+            first=first,
+            name=name,
+        )
+        logger.info(message, *args)
 
 
 def build_application(settings: Settings) -> Application:
@@ -60,6 +181,11 @@ def build_application(settings: Settings) -> Application:
 
         application.bot_data["buyback_alerts"] = buyback_alerts
         await buyback_alerts.ensure_initialized()
+        logger.info("Buyback alert service initialized.")
+
+        application.bot_data["daily_report"] = daily_report
+        await daily_report.ensure_initialized()
+        logger.info("Daily report service initialized.")
 
         if settings.movement_alerts_enabled:
             application.bot_data["whale_alerts"] = whale_alerts
@@ -78,92 +204,16 @@ def build_application(settings: Settings) -> Application:
                 "Movement alert system disabled (MOVEMENT_ALERTS_ENABLED=false); skipping whale/flow/dex/liquidity watchers."
             )
 
-        application.bot_data["daily_report"] = daily_report
-        await daily_report.ensure_initialized()
-
-        if application.job_queue:
-            application.job_queue.run_repeating(
-                buyback_alerts.job_callback,
-                interval=settings.buyback_poll_seconds,
-                first=5,
-                name="buyback_alerts",
-            )
-            logger.info(
-                "Buyback watcher enabled (wallet=%s interval=%ss).",
-                settings.buyback_wallet_address,
-                settings.buyback_poll_seconds,
-            )
-
-            if settings.movement_alerts_enabled:
-                application.job_queue.run_repeating(
-                    whale_alerts.job_callback,
-                    interval=settings.whale_poll_seconds,
-                    first=5,
-                    name="wco_whale_alerts",
-                )
-                logger.info(
-                    "WCO whale watcher enabled (router=%s interval=%ss channel=%s).",
-                    settings.whale_router_address,
-                    settings.whale_poll_seconds,
-                    settings.whale_alert_channel_id or "unset",
-                )
-
-                application.job_queue.run_repeating(
-                    exchange_flow_alerts.job_callback,
-                    interval=settings.exchange_flow_poll_seconds,
-                    first=5,
-                    name="exchange_flow_alerts",
-                )
-                logger.info(
-                    "Exchange flow watcher enabled (interval=%ss channel=%s threshold=%s WCO).",
-                    settings.exchange_flow_poll_seconds,
-                    settings.exchange_flow_alert_channel_id or "unset",
-                    settings.exchange_flow_threshold_wco,
-                )
-
-                application.job_queue.run_repeating(
-                    wco_dex_alerts.job_callback,
-                    interval=settings.wco_dex_poll_seconds,
-                    first=10,
-                    name="wco_dex_alerts",
-                )
-                logger.info(
-                    "WCO DEX watcher enabled (interval=%ss channel=%s).",
-                    settings.wco_dex_poll_seconds,
-                    settings.wco_dex_alert_channel_id or "unset",
-                )
-
-                application.job_queue.run_repeating(
-                    wswap_liquidity_alerts.job_callback,
-                    interval=settings.wswap_liquidity_poll_seconds,
-                    first=15,
-                    name="wswap_liquidity_alerts",
-                )
-                logger.info(
-                    "W-Swap liquidity watcher enabled (factory=%s interval=%ss channel=%s).",
-                    settings.wswap_factory_address,
-                    settings.wswap_liquidity_poll_seconds,
-                    settings.wswap_liquidity_alert_channel_id or "unset",
-                )
-
-            # Schedule daily report at configured time (default 23:00 UTC)
-            report_time = time(
-                hour=settings.daily_report_hour,
-                minute=settings.daily_report_minute,
-            )
-            application.job_queue.run_daily(
-                daily_report.job_callback,
-                time=report_time,
-                name="daily_report",
-            )
-            logger.info(
-                "Daily report scheduled at %02d:%02d UTC (channel=%s).",
-                settings.daily_report_hour,
-                settings.daily_report_minute,
-                settings.daily_report_channel_id or "unset",
-            )
-        else:
-            logger.warning("JobQueue not available; buyback alerts will not run.")
+        _schedule_job_queue_jobs(
+            application=application,
+            settings=settings,
+            buyback_alerts=buyback_alerts,
+            whale_alerts=whale_alerts,
+            exchange_flow_alerts=exchange_flow_alerts,
+            wco_dex_alerts=wco_dex_alerts,
+            wswap_liquidity_alerts=wswap_liquidity_alerts,
+            daily_report=daily_report,
+        )
 
     application = (
         Application.builder()
@@ -172,25 +222,7 @@ def build_application(settings: Settings) -> Application:
         .build()
     )
 
-    application.add_handler(CommandHandler("start", command_handlers.start))
-    application.add_handler(CommandHandler("help", command_handlers.start))
-    application.add_handler(CommandHandler("wco", command_handlers.wco))
-    application.add_handler(CommandHandler("wave", command_handlers.wave))
-    application.add_handler(CommandHandler("price", command_handlers.price))
-    application.add_handler(CommandHandler("stats", command_handlers.stats))
-    application.add_handler(CommandHandler("tokens", command_handlers.tokens))
-    application.add_handler(CommandHandler("token", command_handlers.token))
-    application.add_handler(CommandHandler("buybackalerts", command_handlers.buybackalerts))
-    application.add_handler(CommandHandler("buybackstatus", command_handlers.buybackstatus))
-    application.add_handler(CommandHandler("buybacktest", command_handlers.buybacktest))
-    application.add_handler(CommandHandler("flowalerts", command_handlers.flowalerts))
-    application.add_handler(CommandHandler("flowstatus", command_handlers.flowstatus))
-    application.add_handler(CommandHandler("dexalerts", command_handlers.dexalerts))
-    application.add_handler(CommandHandler("dexstatus", command_handlers.dexstatus))
-    application.add_handler(CommandHandler("liqalerts", command_handlers.liqalerts))
-    application.add_handler(CommandHandler("liqstatus", command_handlers.liqstatus))
-    application.add_handler(CommandHandler("pairs", command_handlers.pairs))
-    application.add_handler(CommandHandler("dailyreport", command_handlers.dailyreport))
+    _register_command_handlers(application, command_handlers)
 
     logger.info("Telegram application wired with command handlers.")
     return application

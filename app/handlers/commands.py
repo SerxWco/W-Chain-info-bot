@@ -51,39 +51,14 @@ class CommandHandlers:
         text = (
             "👋 Welcome to *Bubbles* 🌊\n"
             "W-Chain Analytics Bot\n\n"
-            "Real-time token data, on-chain health metrics,\n"
-            "and fast insights for the W-Chain ecosystem.\n\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "📌 COMMANDS\n"
-            "━━━━━━━━━━━━━━━━━━\n\n"
-            "🌊 /wco\n"
-            "WCO overview\n"
-            "(price • supply • market cap)\n\n"
-            "🟦 /wave\n"
-            "WAVE reward token snapshot\n\n"
-            "💱 /price <symbols>\n"
-            "Multi-token price lookup\n"
-            "(default: WCO, WAVE, USDT, USDC)\n\n"
-            "🪙 /token <symbol>\n"
-            "Detailed token analytics\n"
-            "(e.g. /token OG88)\n\n"
-            "📊 /stats\n"
-            "Network activity & wallet health\n\n"
-            "📦 /tokens\n"
-            "Featured W-Chain assets\n\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "🪙 FEATURED TOKENS\n"
-            "━━━━━━━━━━━━━━━━━━\n\n"
-            "🟦 WAVE\n"
-            "🟩 WUSD\n"
-            "🟧 USDT / USDC\n"
-            "🟨 OG-88\n"
-            "🟪 DOGE\n"
-            "🔵 SOL\n"
-            "🔴 XRP\n"
-            "⚪ Wrapped WCO (WWCO)\n\n"
-            "🔍 Tip: use */token <symbol>* for full details\n\n"
-            "━━━━━━━━━━━━━━━━━━\n"
+            "*Core Commands*\n"
+            "• /wco - WCO overview (price, supply, market cap)\n"
+            "• /wave - WAVE snapshot\n"
+            "• /price [symbols] - quick multi-token prices\n"
+            "• /token <symbol> - detailed token view\n"
+            "• /stats - network and gas metrics\n"
+            "• /dailyreport - trigger daily report\n\n"
+            "_Tip: additional admin/alert commands are available but hidden from the menu._\n"
             "🌐 scan.w-chain.com"
         )
         await self._send_branded_message(message, text)
@@ -313,15 +288,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.exchange_flow_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.exchange_flow_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -374,16 +342,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        # Determine if enabling or disabling
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.wco_dex_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.wco_dex_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -440,16 +400,8 @@ class CommandHandlers:
             await message.reply_text("Unable to identify user.")
             return
 
-        # Determine if enabling or disabling
-        enable: bool | None = None
-        if context.args:
-            arg = context.args[0].lower()
-            if arg in ("on", "enable", "1", "true", "yes"):
-                enable = True
-            elif arg in ("off", "disable", "0", "false", "no"):
-                enable = False
-
-        success, result_msg = await self.wswap_liquidity_alerts.toggle_alerts(
+        enable = self._parse_toggle_argument(context.args)
+        _, result_msg = await self.wswap_liquidity_alerts.toggle_alerts(
             context.bot, user.id, enable=enable
         )
         await message.reply_text(result_msg)
@@ -547,6 +499,17 @@ class CommandHandlers:
         if send_text:
             await message.reply_text(text, parse_mode=parse_mode)
 
+    @staticmethod
+    def _parse_toggle_argument(args: list[str]) -> bool | None:
+        if not args:
+            return None
+        arg = args[0].lower()
+        if arg in ("on", "enable", "1", "true", "yes"):
+            return True
+        if arg in ("off", "disable", "0", "false", "no"):
+            return False
+        return None
+
     def _token_reference_section(self) -> str:
         # Fixed display order with emoji and label
         token_display = [
@@ -559,7 +522,7 @@ class CommandHandlers:
             ("🔴", "XRP"),
             ("⚪", "Wrapped WCO (WWCO)"),
         ]
-        
+
         lines = ["🌊 *W-Chain Tokens*\n"]
         for emoji, label in token_display:
             lines.append(f"{emoji} {label}")
