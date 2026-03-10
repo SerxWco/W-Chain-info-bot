@@ -473,7 +473,10 @@ class CommandHandlers:
         await message.reply_text("📊 Generating daily report...")
 
         try:
-            sent, status = await self.daily_report.send_daily_report(context.bot)
+            sent, status = await self.daily_report.send_daily_report(
+                context.bot,
+                target_chat_id=message.chat_id,
+            )
             if sent:
                 await message.reply_text("✅ Daily report sent successfully!")
             else:
