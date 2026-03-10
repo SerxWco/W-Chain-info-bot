@@ -473,8 +473,11 @@ class CommandHandlers:
         await message.reply_text("📊 Generating daily report...")
 
         try:
-            await self.daily_report.send_daily_report(context.bot)
-            await message.reply_text("✅ Daily report sent successfully!")
+            sent, status = await self.daily_report.send_daily_report(context.bot)
+            if sent:
+                await message.reply_text("✅ Daily report sent successfully!")
+            else:
+                await message.reply_text(f"⚠️ Daily report not sent: {status}")
         except Exception as e:
             logger.exception("Failed to send manual daily report")
             await message.reply_text(f"❌ Failed to send daily report: {e}")

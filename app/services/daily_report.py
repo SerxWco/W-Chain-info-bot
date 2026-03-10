@@ -89,24 +89,26 @@ class DailyReportService:
 
     async def job_callback(self, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Called by the job scheduler to send the daily report."""
-        await self.send_daily_report(context.bot)
+        sent, reason = await self.send_daily_report(context.bot)
+        if not sent:
+            logger.warning("Daily report job did not send a message: %s", reason)
 
-    async def send_daily_report(self, bot: Bot) -> None:
+    async def send_daily_report(self, bot: Bot) -> tuple[bool, str]:
         """Fetch current metrics, compare to previous day, and send report."""
         if not self.settings.daily_report_enabled:
             logger.debug("Daily report disabled, skipping.")
-            return
+            return False, "Daily report is disabled in configuration."
 
         channel_id = self.settings.daily_report_channel_id
         if not channel_id:
             logger.warning("Daily report channel ID not configured, skipping.")
-            return
+            return False, "DAILY_REPORT_CHANNEL_ID is not configured."
 
         # Fetch current metrics
         current = await self._fetch_current_metrics()
         if not current:
             logger.error("Failed to fetch current metrics for daily report.")
-            return
+            return False, "Unable to fetch metrics for the report."
 
         # Get previous metrics for comparison
         async with self._lock:
@@ -133,12 +135,13 @@ class DailyReportService:
             logger.info("Daily report sent to channel %s", channel_id)
         except Exception:
             logger.exception("Failed to send daily report to channel %s", channel_id)
-            return
+            return False, f"Failed to send message to channel {channel_id}."
 
         # Update previous metrics for tomorrow's comparison
         async with self._lock:
             self._previous_metrics = current
             self._save_state()
+        return True, "Daily report sent."
 
     async def _fetch_current_metrics(self) -> Optional[DailyMetrics]:
         """Fetch all metrics needed for the daily report."""

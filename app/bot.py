@@ -1,5 +1,5 @@
 import logging
-from datetime import time
+from datetime import time, timezone
 
 from telegram import BotCommand
 from telegram.ext import Application, CommandHandler
@@ -82,6 +82,7 @@ def _schedule_job_queue_jobs(
     report_time = time(
         hour=settings.daily_report_hour,
         minute=settings.daily_report_minute,
+        tzinfo=timezone.utc,
     )
     job_queue.run_daily(
         daily_report.job_callback,
