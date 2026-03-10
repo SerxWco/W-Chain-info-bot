@@ -93,13 +93,26 @@ class DailyReportService:
         if not sent:
             logger.warning("Daily report job did not send a message: %s", reason)
 
-    async def send_daily_report(self, bot: Bot) -> tuple[bool, str]:
-        """Fetch current metrics, compare to previous day, and send report."""
+    async def send_daily_report(
+        self,
+        bot: Bot,
+        target_chat_id: Optional[str | int] = None,
+    ) -> tuple[bool, str]:
+        """
+        Fetch current metrics, compare to previous day, and send report.
+
+        When ``target_chat_id`` is provided (e.g. manual command), the report is sent
+        there. Otherwise, the configured DAILY_REPORT_CHANNEL_ID is used.
+        """
         if not self.settings.daily_report_enabled:
             logger.debug("Daily report disabled, skipping.")
             return False, "Daily report is disabled in configuration."
 
-        channel_id = self.settings.daily_report_channel_id
+        channel_id = (
+            target_chat_id
+            if target_chat_id is not None
+            else self.settings.daily_report_channel_id
+        )
         if not channel_id:
             logger.warning("Daily report channel ID not configured, skipping.")
             return False, "DAILY_REPORT_CHANNEL_ID is not configured."
