@@ -209,6 +209,7 @@ class DailyReportService:
         lines = [
             "✅ *Daily Update*\n",
             f"W-Ocean Daily Update 📅 {day_name}, {date_str}\n",
+            "_Totals with change vs previous day in parentheses._\n",
         ]
 
         # Total W-Chain Addresses
@@ -258,7 +259,7 @@ class DailyReportService:
 
         # WCO Burnt
         burn_line = self._format_metric_line(
-            "🔥 WCO Burnt",
+            "🔥 Total WCO Burned",
             current.burned,
             previous.burned if previous else None,
             is_currency=False,
