@@ -22,6 +22,7 @@ PUBLIC_COMMAND_SPECS = [
     ("wco", "wco", "WCO price and supply analytics"),
     ("wave", "wave", "WAVE token snapshot"),
     ("price", "price", "Multi-token price lookup"),
+    ("volume", "volume", "W-Swap 24h volume by pair"),
     ("token", "token", "Token details lookup (e.g. /token SOL)"),
     ("stats", "stats", "Network throughput and gas metrics"),
     ("dailyreport", "dailyreport", "Trigger daily metrics report manually"),

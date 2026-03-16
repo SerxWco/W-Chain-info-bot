@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 import httpx
 
@@ -46,6 +46,41 @@ class WChainClient:
         return await self._fetch_json(
             self.settings.gas_oracle_endpoint, cache_key="network:gas", ttl=self.settings.cache_stats_ttl
         )
+
+    async def get_wswap_volume(self, pair_id: int) -> Tuple[Optional[Dict[str, Any]], Optional[int]]:
+        """
+        Fetch 24h W-Swap volume for a trading pair.
+
+        Returns:
+            (payload, status_code)
+            - payload is present for successful responses
+            - status_code allows callers to distinguish 400/404 from transient failures
+        """
+        cache_key = f"wswap:volume:{pair_id}"
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached, 200
+
+        url = f"{self.settings.wswap_volume_api_base}/{pair_id}"
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.http_timeout) as client:
+                response = await client.get(url)
+
+            if response.status_code in (400, 404):
+                return None, response.status_code
+
+            response.raise_for_status()
+            data = response.json()
+        except httpx.HTTPStatusError as exc:
+            logger.warning("HTTP status error calling %s: %s", url, exc)
+            status = exc.response.status_code if exc.response else None
+            return None, status
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error calling %s: %s", url, exc)
+            return None, None
+
+        self._cache.set(cache_key, data, self.settings.wswap_volume_cache_ttl)
+        return data, response.status_code
 
     async def get_address_transactions(
         self,

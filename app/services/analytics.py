@@ -106,6 +106,32 @@ class AnalyticsService:
             "gas_details": gas_prices,
         }
 
+    async def wswap_pair_volume(self, pair_id: int) -> Dict:
+        payload, status_code = await self.wchain.get_wswap_volume(pair_id)
+        if status_code == 404:
+            return {"status": "not_found", "pair_id": pair_id}
+        if status_code == 400:
+            return {"status": "bad_request", "pair_id": pair_id}
+        if not payload:
+            return {"status": "unavailable", "pair_id": pair_id}
+
+        pair_name = payload.get("pair") or self.settings.wswap_trade_pairs.get(pair_id) or f"Pair #{pair_id}"
+        return {
+            "status": "ok",
+            "pair_id": pair_id,
+            "pair": pair_name,
+            "vol24h": _safe_float(payload, "vol24h") or 0.0,
+        }
+
+    async def wswap_all_pair_volumes(self, pair_ids: Optional[Iterable[int]] = None) -> list[Dict]:
+        ids = sorted({int(pid) for pid in (pair_ids or self.settings.wswap_trade_pairs.keys())})
+        results = await asyncio.gather(*(self.wswap_pair_volume(pair_id) for pair_id in ids))
+        return sorted(
+            results,
+            key=lambda item: float(item.get("vol24h") or 0),
+            reverse=True,
+        )
+
     async def _get_wave_counters(self) -> Optional[Dict]:
         contract = self.settings.wave_contract
         if not contract:
