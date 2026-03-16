@@ -61,6 +61,13 @@ env_template.txt
 | `SUPPLY_CACHE_TTL` | TTL for supply cache (seconds) | `120` |
 | `STATS_CACHE_TTL` | TTL for stats cache (seconds) | `45` |
 
+Daily report automation uses:
+- `DAILY_REPORT_ENABLED` (default: `true`)
+- `DAILY_REPORT_CHANNEL_ID` (recommended for scheduled sends)
+- `DAILY_REPORT_HOUR` / `DAILY_REPORT_MINUTE` (UTC, default `23:00`)
+
+If `DAILY_REPORT_CHANNEL_ID` is not configured, the bot will reuse the last successful `/dailyreport` chat as a fallback destination for scheduled runs.
+
 See `app/config.py` to extend the token catalog or add additional CoinGecko mappings.
 
 ## Command Reference

@@ -61,6 +61,7 @@ class DailyReportService:
         self._lock = asyncio.Lock()
         self._state_path = Path(self.settings.daily_report_state_path)
         self._previous_metrics: Optional[DailyMetrics] = None
+        self._fallback_chat_id: Optional[str] = None
         self._load_state()
 
     async def ensure_initialized(self) -> None:
@@ -68,6 +69,12 @@ class DailyReportService:
         On cold start, fetch current metrics as baseline if we don't have
         previous data stored.
         """
+        if not self.settings.daily_report_channel_id and not self._fallback_chat_id:
+            logger.warning(
+                "Daily report has no automatic destination configured. "
+                "Set DAILY_REPORT_CHANNEL_ID or run /dailyreport once to save a fallback chat."
+            )
+
         async with self._lock:
             if self._previous_metrics is not None:
                 logger.info(
@@ -111,11 +118,18 @@ class DailyReportService:
         channel_id = (
             target_chat_id
             if target_chat_id is not None
-            else self.settings.daily_report_channel_id
+            else (self.settings.daily_report_channel_id or self._fallback_chat_id)
         )
         if not channel_id:
-            logger.warning("Daily report channel ID not configured, skipping.")
-            return False, "DAILY_REPORT_CHANNEL_ID is not configured."
+            logger.warning(
+                "Daily report skipped: DAILY_REPORT_CHANNEL_ID is not configured "
+                "and no fallback chat is available."
+            )
+            return (
+                False,
+                "DAILY_REPORT_CHANNEL_ID is not configured and no fallback chat is available. "
+                "Run /dailyreport once to save a fallback chat.",
+            )
 
         # Fetch current metrics
         current = await self._fetch_current_metrics()
@@ -153,6 +167,10 @@ class DailyReportService:
         # Update previous metrics for tomorrow's comparison
         async with self._lock:
             self._previous_metrics = current
+            # Save the most recent successful manual destination as a fallback target
+            # for scheduled sends when DAILY_REPORT_CHANNEL_ID is not configured.
+            if target_chat_id is not None:
+                self._fallback_chat_id = str(channel_id)
             self._save_state()
         return True, "Daily report sent."
 
@@ -341,6 +359,9 @@ class DailyReportService:
         previous = daily_report.get("previous_metrics")
         if previous:
             self._previous_metrics = DailyMetrics.from_dict(previous)
+        fallback_chat_id = daily_report.get("fallback_chat_id")
+        if fallback_chat_id not in (None, ""):
+            self._fallback_chat_id = str(fallback_chat_id)
 
     def _save_state(self) -> None:
         """Save current metrics to state file for next day comparison."""
@@ -356,6 +377,7 @@ class DailyReportService:
             "previous_metrics": (
                 self._previous_metrics.to_dict() if self._previous_metrics else None
             ),
+            "fallback_chat_id": self._fallback_chat_id,
         }
 
         try:
