@@ -49,6 +49,24 @@ class Settings:
         }
     )
     default_price_symbols: List[str] = field(default_factory=lambda: ["WCO", "WAVE", "USDT", "USDC"])
+    wswap_volume_api_base: str = field(
+        default_factory=lambda: os.getenv(
+            "WSWAP_VOLUME_API_BASE", "https://oracle.w-chain.com/api/w-swap/volume"
+        ).rstrip("/")
+    )
+    wswap_volume_cache_ttl: int = field(
+        default_factory=lambda: int(os.getenv("WSWAP_VOLUME_CACHE_TTL", "60"))
+    )
+    wswap_trade_pairs: Dict[int, str] = field(
+        default_factory=lambda: {
+            1: "WAVE/WCO",
+            2: "USDT/WCO",
+            3: "USDC/WCO",
+            4: "SOL/WCO",
+            5: "DOGE/WCO",
+            6: "XRP/WCO",
+        }
+    )
 
     # Global kill-switch for on-chain movement alert watchers (whale/flow/dex/liquidity monitors).
     # When disabled, the bot still runs and responds to commands, but movement alert jobs do not start.

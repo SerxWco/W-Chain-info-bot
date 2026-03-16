@@ -55,6 +55,7 @@ class CommandHandlers:
             "• /wco - WCO overview (price, supply, market cap)\n"
             "• /wave - WAVE snapshot\n"
             "• /price [symbols] - quick multi-token prices\n"
+            "• /volume [pair_id] - W-Swap 24h pair volume\n"
             "• /token <symbol> - detailed token view\n"
             "• /stats - network and gas metrics\n"
             "• /dailyreport - trigger daily report\n\n"
@@ -123,6 +124,84 @@ class CommandHandlers:
             lines.append(f"{symbol}: {display}")
         lines.append("\nPowered by W-Chain Oracle & CoinGecko reference feeds.")
         await self._send_branded_message(message, "\n".join(lines))
+
+    async def volume(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        Show W-Swap 24h volume in USD for one pair or all known pairs.
+        Usage:
+          /volume
+          /volume <pair_id>
+        """
+        message = await self._ensure_message(update)
+        if not message:
+            return
+
+        known_pairs = self.settings.wswap_trade_pairs
+        if not context.args:
+            rows = await self.analytics.wswap_all_pair_volumes()
+            successful = [row for row in rows if row.get("status") == "ok"]
+            if not successful:
+                await self._send_branded_message(
+                    message,
+                    "W-Swap volume is unavailable right now. Please try again shortly.",
+                    parse_mode=None,
+                )
+                return
+
+            lines = ["📊 *W-Swap 24h Volume (USD)*", ""]
+            for row in successful:
+                pair_id = int(row.get("pair_id"))
+                pair_name = row.get("pair") or known_pairs.get(pair_id) or f"Pair #{pair_id}"
+                lines.append(f"• #{pair_id} {pair_name}: {format_usd(row.get('vol24h'))}")
+
+            failed = len(rows) - len(successful)
+            if failed > 0:
+                lines.append(f"\n_⚠️ {failed} pair(s) were unavailable in this request._")
+            lines.append("\nTip: use `/volume <pair_id>` for a single pair.")
+            await self._send_branded_message(message, "\n".join(lines))
+            return
+
+        raw_pair_id = context.args[0]
+        try:
+            pair_id = int(raw_pair_id)
+            if pair_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            known = ", ".join(f"{pid}={name}" for pid, name in sorted(known_pairs.items()))
+            await self._send_branded_message(
+                message,
+                f"Usage: `/volume <pair_id>`\nKnown pairs: {known}",
+            )
+            return
+
+        result = await self.analytics.wswap_pair_volume(pair_id)
+        status = result.get("status")
+        if status == "not_found":
+            await self._send_branded_message(
+                message,
+                f"Pair `{pair_id}` was not found.\nUse `/volume` to list available pairs.",
+            )
+            return
+        if status == "bad_request":
+            await self._send_branded_message(message, "Missing or invalid pair id.", parse_mode=None)
+            return
+        if status != "ok":
+            await self._send_branded_message(
+                message,
+                "Unable to fetch W-Swap volume right now. Please try again shortly.",
+                parse_mode=None,
+            )
+            return
+
+        pair_name = result.get("pair") or known_pairs.get(pair_id) or f"Pair #{pair_id}"
+        text = (
+            "📊 *W-Swap Pair Volume (24h)*\n\n"
+            f"• Pair: {pair_name}\n"
+            f"• Pair ID: {pair_id}\n"
+            f"• Volume: {format_usd(result.get('vol24h'))}\n\n"
+            "_Source: W-Chain Oracle_"
+        )
+        await self._send_branded_message(message, text)
 
     async def stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = await self._ensure_message(update)

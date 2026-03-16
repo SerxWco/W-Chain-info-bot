@@ -13,6 +13,8 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 # PRICE_CACHE_TTL=60
 # SUPPLY_CACHE_TTL=120
 # STATS_CACHE_TTL=45
+# WSWAP_VOLUME_API_BASE=https://oracle.w-chain.com/api/w-swap/volume
+# WSWAP_VOLUME_CACHE_TTL=60
 
 # Buyback alert (incoming WCO to a watched wallet)
 # BUYBACK_ALERTS_ENABLED=true

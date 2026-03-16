@@ -10,6 +10,7 @@ Professional Telegram bot that delivers real-time token insights, price feeds, a
   - `/wco` – WCO market & supply analytics
   - `/wave` – WAVE reward token snapshot
   - `/price [symbols]` – multi-token price lookup (defaults to WCO, WAVE, USDT, USDC)
+  - `/volume [pair_id]` – W-Swap 24h USD volume for one pair (or all known pairs when omitted)
   - `/stats` – network throughput, gas, and wallet activity
   - `/tokens` – featured W-Chain assets and contract references
 - **Data sources** – W-Chain Oracle APIs, W-Chain Explorer (Blockscout), CoinGecko reference feeds.
@@ -60,6 +61,8 @@ env_template.txt
 | `PRICE_CACHE_TTL` | TTL for price cache (seconds) | `60` |
 | `SUPPLY_CACHE_TTL` | TTL for supply cache (seconds) | `120` |
 | `STATS_CACHE_TTL` | TTL for stats cache (seconds) | `45` |
+| `WSWAP_VOLUME_API_BASE` | Base URL for W-Swap pair volume endpoint | `https://oracle.w-chain.com/api/w-swap/volume` |
+| `WSWAP_VOLUME_CACHE_TTL` | Local cache TTL for pair volume queries (seconds) | `60` |
 
 Daily report automation uses:
 - `DAILY_REPORT_ENABLED` (default: `true`)
@@ -76,6 +79,7 @@ See `app/config.py` to extend the token catalog or add additional CoinGecko mapp
 - `/wco` – Price, market cap, circulating/locked/burned supplies, and allocation breakdown.
 - `/wave` – USD & WCO denominated price plus Blockscout holder/transfer counters.
 - `/price BTC ETH` – On-demand lookup for arbitrary symbols (falls back to defaults when no args).
+- `/volume 2` – 24h USD volume for a W-Swap pair id (use `/volume` to list known pairs).
 - `/stats` – Latest block height, total transactions, active wallets, and average gas.
 
 ## Data Providers
